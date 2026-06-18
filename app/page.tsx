@@ -154,4 +154,4 @@ export default function Home() {
       {message && <p className="text-green-300 text-lg">{message}</p>}
     </main>
   )
-}cd ~/rseed-app && git add . && git commit -m "improve login and mining" && git push https://rita726-lab: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@github.com/rita726-lab/rseed-app.git main
+}
