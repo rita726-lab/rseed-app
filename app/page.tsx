@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-type Tab = 'home' | 'ranking' | 'arigatou' | 'nft' | 'profile' | 'wallet'
+type Tab = 'home' | 'ranking' | 'arigatou' | 'nft' | 'profile' | 'wallet' | 'kuji'
 
 type RankUser = {
   id: string
@@ -98,6 +98,9 @@ export default function Home() {
   const [sendingArigatou, setSendingArigatou] = useState(false)
   const [toast, setToast] = useState('')
   const [walletFilter, setWalletFilter] = useState<'all' | 'mine' | 'sent' | 'received'>('all')
+  const [kujiAmount, setKujiAmount] = useState('0.01')
+  const [kujiResult, setKujiResult] = useState<null | { type: 'big' | 'mid' | 'miss'; payout: number; bet: number }>(null)
+  const [kujiPlaying, setKujiPlaying] = useState(false)
 
   const userTitle = getTitle(arigatouCount)
   const nextTitle = getNextTitle(userTitle)
@@ -187,6 +190,29 @@ export default function Home() {
     setArigatouTarget('')
     showToast('💚 ありがとうを送ったよ！')
     setSendingArigatou(false)
+  }
+
+  const handleKuji = async () => {
+    if (!user || kujiPlaying) return
+    const bet = parseFloat(kujiAmount)
+    if (isNaN(bet) || bet < 0.001 || bet > 10) { showToast('0.001〜10 RSEEDで入力してね'); return }
+    if (rseed < bet) { showToast('RSEEDが足りない！'); return }
+    setKujiPlaying(true)
+    setKujiResult(null)
+    await new Promise(r => setTimeout(r, 1800))
+    const rand = Math.random()
+    let type: 'big' | 'mid' | 'miss'
+    let payout: number
+    if (rand < 0.01) { type = 'big'; payout = bet * 100 }
+    else if (rand < 0.10) { type = 'mid'; payout = bet * 10 }
+    else { type = 'miss'; payout = bet * 0.1 }
+    const diff = payout - bet
+    const newBalance = rseed + diff
+    await supabase.from('users').update({ rseed: newBalance }).eq('id', user.id)
+    await supabase.from('history').insert({ user_id: user.id, type: diff >= 0 ? 'arigatou_received' : 'arigatou_sent', amount: Math.abs(diff) })
+    setRseed(newBalance)
+    setKujiResult({ type, payout, bet })
+    setKujiPlaying(false)
   }
 
   const G = { background: '#f7fbf4' }
@@ -478,11 +504,58 @@ export default function Home() {
         </div>
       )}
 
+      {tab === 'kuji' && (
+        <div style={{ padding: '24px 16px' }}>
+          <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 20, fontWeight: 500 }}>ARIGATOU KUJI</div>
+          <div style={{ ...W, border: borderGreen, borderRadius: 20, padding: '24px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>🎋</div>
+            <div style={{ ...textPrimary, fontSize: 14, fontWeight: 500, marginBottom: 4 }}>ありがとうくじ</div>
+            <div style={{ ...textMuted, fontSize: 11, marginBottom: 20, lineHeight: 1.6 }}>
+              大当たり 1%（100倍）/ 中当たり 9%（10倍）<br/>ハズレ 90%（10%返還）
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ ...textMuted, fontSize: 11, marginBottom: 8 }}>賭けるRSEED（0.001〜10）</div>
+              <input
+                type="number" value={kujiAmount} onChange={e => setKujiAmount(e.target.value)}
+                min="0.001" max="10" step="0.001"
+                style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '0.5px solid #c8e8bc', background: '#f7fbf4', color: '#2d4a2d', fontSize: 18, textAlign: 'center', outline: 'none', fontWeight: 500 }}
+              />
+              <div style={{ ...textMuted, fontSize: 11, marginTop: 6 }}>残高：{rseed.toFixed(4)} RSEED</div>
+            </div>
+            <button onClick={handleKuji} disabled={kujiPlaying}
+              style={{ width: '100%', padding: '16px 0', borderRadius: 30, background: kujiPlaying ? '#c8e8bc' : '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 16, border: 'none', cursor: kujiPlaying ? 'default' : 'pointer' }}>
+              {kujiPlaying ? '🎋 引いてる...' : '🎋 くじを引く'}
+            </button>
+          </div>
+
+          {kujiResult && (
+            <div style={{ marginTop: 16, ...W, border: kujiResult.type === 'big' ? '2px solid #f0c040' : kujiResult.type === 'mid' ? '1px solid #b8dda8' : borderGreen, borderRadius: 20, padding: '24px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 52, marginBottom: 8 }}>
+                {kujiResult.type === 'big' ? '🎉' : kujiResult.type === 'mid' ? '✨' : '🌱'}
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 500, color: kujiResult.type === 'big' ? '#b8860b' : kujiResult.type === 'mid' ? '#3a7d44' : '#8ab88a', marginBottom: 4 }}>
+                {kujiResult.type === 'big' ? '大当たり！！！' : kujiResult.type === 'mid' ? '中当たり！' : 'ハズレ...'}
+              </div>
+              <div style={{ color: '#2d6636', fontSize: 28, fontWeight: 500 }}>
+                {kujiResult.payout >= kujiResult.bet ? '+' : ''}{(kujiResult.payout - kujiResult.bet).toFixed(4)} RSEED
+              </div>
+              <div style={{ ...textMuted, fontSize: 11, marginTop: 4 }}>
+                {kujiResult.payout.toFixed(4)} RSEED 獲得
+              </div>
+              <button onClick={() => setKujiResult(null)}
+                style={{ marginTop: 14, padding: '10px 28px', borderRadius: 30, background: '#edf7e8', color: '#3a7d44', border: '0.5px solid #b8dda8', fontSize: 13, cursor: 'pointer' }}>
+                もう一回
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 420, ...W, borderTop: '0.5px solid #e0f0d8', padding: '10px 0 20px', display: 'flex', justifyContent: 'space-around', zIndex: 50 }}>
         {([
           { id: 'home', icon: '🏠', label: 'ホーム' },
           { id: 'ranking', icon: '🏆', label: 'ランク' },
-          { id: 'wallet', icon: '👛', label: 'ウォレット' },
+          { id: 'kuji', icon: '🎋', label: 'くじ' },
           { id: 'nft', icon: '🖼️', label: 'NFT' },
           { id: 'profile', icon: '👤', label: 'プロフィール' },
         ] as { id: Tab; icon: string; label: string }[]).map(({ id, icon, label }) => (
