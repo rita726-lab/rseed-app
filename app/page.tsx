@@ -88,9 +88,8 @@ export default function Home() {
   const [mining, setMining] = useState(false)
   const [accumulatedHours, setAccumulatedHours] = useState(0)
   const [accumulatedRseed, setAccumulatedRseed] = useState(0)
-  const [password, setPassword] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
   const [loginError, setLoginError] = useState('')
+  const [magicSent, setMagicSent] = useState(false)
   const [loading, setLoading] = useState(true)
   const [ranking, setRanking] = useState<RankUser[]>([])
   const [history, setHistory] = useState<HistoryItem[]>([])
@@ -151,15 +150,9 @@ export default function Home() {
     setLoginError('')
     const trimmed = email.trim()
     if (!trimmed.includes('@')) { setLoginError('メールアドレスが正しくありません'); return }
-    if (password.length < 6) { setLoginError('パスワードは6文字以上にしてね'); return }
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email: trimmed, password })
-      if (error) { setLoginError('登録に失敗しました：' + error.message); return }
-      showToast('🌱 ようこそRSEEDへ！')
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email: trimmed, password })
-      if (error) { setLoginError('メールまたはパスワードが違います'); return }
-    }
+    const { error } = await supabase.auth.signInWithOtp({ email: trimmed })
+    if (error) { setLoginError('送信に失敗しました：' + error.message); return }
+    setMagicSent(true)
   }
 
   const handleMine = async () => {
@@ -239,24 +232,26 @@ export default function Home() {
         <div style={{ fontSize: 11, ...textMuted, letterSpacing: 2, marginTop: 2 }}>RITATASEED</div>
       </div>
       <div style={{ ...W, border: borderGreen, borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', background: '#f7fbf4', borderRadius: 12, padding: 4, marginBottom: 4 }}>
-          <button onClick={() => setIsSignUp(false)}
-            style={{ flex: 1, padding: '8px 0', borderRadius: 10, background: !isSignUp ? '#fff' : 'transparent', color: !isSignUp ? '#3a7d44' : '#8ab88a', border: !isSignUp ? '0.5px solid #c8e8bc' : 'none', fontSize: 13, cursor: 'pointer', fontWeight: !isSignUp ? 500 : 400 }}>
-            ログイン
-          </button>
-          <button onClick={() => setIsSignUp(true)}
-            style={{ flex: 1, padding: '8px 0', borderRadius: 10, background: isSignUp ? '#fff' : 'transparent', color: isSignUp ? '#3a7d44' : '#8ab88a', border: isSignUp ? '0.5px solid #c8e8bc' : 'none', fontSize: 13, cursor: 'pointer', fontWeight: isSignUp ? 500 : 400 }}>
-            新規登録
-          </button>
-        </div>
-        <input type="email" placeholder="メールアドレス" value={email} onChange={e => setEmail(e.target.value)}
-          style={{ padding: '12px 16px', borderRadius: 12, border: '0.5px solid #c8e8bc', ...G, ...textPrimary, fontSize: 14, outline: 'none', width: '100%' }} />
-        <input type="password" placeholder="パスワード（6文字以上）" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()}
-          style={{ padding: '12px 16px', borderRadius: 12, border: '0.5px solid #c8e8bc', ...G, ...textPrimary, fontSize: 14, outline: 'none', width: '100%' }} />
-        <button onClick={handleLogin} style={{ padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer' }}>
-          {isSignUp ? '🌱 登録する' : 'ログイン'}
-        </button>
-        {loginError && <p style={{ color: '#e24b4a', fontSize: 12, textAlign: 'center' }}>{loginError}</p>}
+        {magicSent ? (
+          <>
+            <div style={{ textAlign: 'center', fontSize: 32 }}>📬</div>
+            <p style={{ textAlign: 'center', ...textGreen, fontWeight: 500, fontSize: 15 }}>メールを送りました！</p>
+            <p style={{ textAlign: 'center', ...textMuted, fontSize: 13, lineHeight: 1.6 }}>届いたメールのリンクをタップするとログインできるよ🌱</p>
+            <button onClick={() => { setMagicSent(false); setEmail('') }} style={{ padding: '10px 0', borderRadius: 30, background: 'transparent', color: '#3a7d44', fontWeight: 500, fontSize: 13, border: '0.5px solid #c8e8bc', cursor: 'pointer' }}>
+              別のメールで試す
+            </button>
+          </>
+        ) : (
+          <>
+            <p style={{ textAlign: 'center', ...textMuted, fontSize: 13 }}>メールアドレスを入力するとログインリンクが届くよ</p>
+            <input type="email" placeholder="メールアドレス" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()}
+              style={{ padding: '12px 16px', borderRadius: 12, border: '0.5px solid #c8e8bc', ...G, ...textPrimary, fontSize: 14, outline: 'none', width: '100%' }} />
+            <button onClick={handleLogin} style={{ padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer' }}>
+              🌱 ログインリンクを送る
+            </button>
+            {loginError && <p style={{ color: '#e24b4a', fontSize: 12, textAlign: 'center' }}>{loginError}</p>}
+          </>
+        )}
       </div>
     </main>
   )
