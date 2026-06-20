@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-type Tab = 'home' | 'ranking' | 'arigatou' | 'nft' | 'profile'
+type Tab = 'home' | 'ranking' | 'arigatou' | 'nft' | 'profile' | 'wallet'
 
 type RankUser = {
   id: string
@@ -21,6 +21,8 @@ type HistoryItem = {
   type: 'mine' | 'arigatou_sent' | 'arigatou_received'
   amount: number
   created_at: string
+  from_username?: string
+  to_username?: string
 }
 
 const TITLE_THRESHOLDS = [
@@ -368,6 +370,73 @@ export default function Home() {
         </div>
       )}
 
+      {tab === 'wallet' && (() => {
+        const totalReceived = history.filter(h => h.type !== 'arigatou_sent').reduce((s, h) => s + h.amount, 0)
+        const totalSent = history.filter(h => h.type === 'arigatou_sent').reduce((s, h) => s + h.amount, 0)
+        const [filter, setFilter] = useState<'all' | 'mine' | 'sent' | 'received'>('all')
+        const filtered = history.filter(h => {
+          if (filter === 'all') return true
+          if (filter === 'mine') return h.type === 'mine'
+          if (filter === 'sent') return h.type === 'arigatou_sent'
+          if (filter === 'received') return h.type === 'arigatou_received'
+          return true
+        })
+        return (
+          <div>
+            <div style={{ ...W, padding: '20px 20px 16px', borderBottom: '0.5px solid #e0f0d8', textAlign: 'center' }}>
+              <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 6 }}>WALLET BALANCE</div>
+              <div style={{ fontSize: 44, fontWeight: 500, color: '#2d6636' }}>{rseed.toFixed(4)}</div>
+              <div style={{ ...textMuted, fontSize: 12, marginTop: 2 }}>RSEED</div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                <div style={{ flex: 1, background: '#f0f9ea', border: '0.5px solid #d4eacc', borderRadius: 12, padding: '10px 12px' }}>
+                  <div style={{ ...textMuted, fontSize: 10, marginBottom: 3 }}>受け取り総額</div>
+                  <div style={{ color: '#2d6636', fontSize: 16, fontWeight: 500 }}>+{totalReceived.toFixed(3)}</div>
+                  <div style={{ color: '#a0c4a0', fontSize: 10 }}>RSEED</div>
+                </div>
+                <div style={{ flex: 1, background: '#f0f9ea', border: '0.5px solid #d4eacc', borderRadius: 12, padding: '10px 12px' }}>
+                  <div style={{ ...textMuted, fontSize: 10, marginBottom: 3 }}>送った総額</div>
+                  <div style={{ color: '#e24b4a', fontSize: 16, fontWeight: 500 }}>-{totalSent.toFixed(3)}</div>
+                  <div style={{ color: '#a0c4a0', fontSize: 10 }}>RSEED</div>
+                </div>
+              </div>
+              <button onClick={() => setTab('arigatou')}
+                style={{ display: 'block', width: '100%', marginTop: 12, padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer' }}>
+                💚 ありがとうを送る
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 6, padding: '10px 14px', background: '#f7fbf4', borderBottom: '0.5px solid #e8f4e0' }}>
+              {([['all', 'すべて'], ['received', 'もらった'], ['sent', '送った'], ['mine', 'マイニング']] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setFilter(val)}
+                  style={{ flex: 1, padding: '6px 0', borderRadius: 20, fontSize: 10, border: '0.5px solid #c8e8bc', cursor: 'pointer', background: filter === val ? '#3a7d44' : '#fff', color: filter === val ? '#fff' : '#8ab88a' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div style={{ ...W }}>
+              {filtered.length === 0 && <div style={{ padding: '20px 16px', ...textMuted, fontSize: 13 }}>履歴がないよ</div>}
+              {filtered.map((h, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderBottom: '0.5px solid #f0f7ec' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: h.type === 'arigatou_sent' ? '#fff0f0' : '#edf7e8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                    {h.type === 'mine' ? '⛏️' : h.type === 'arigatou_sent' ? '💸' : '💚'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ ...textPrimary, fontSize: 13, fontWeight: 500 }}>
+                      {h.type === 'mine' ? 'マイニング' : h.type === 'arigatou_sent' ? 'ありがとう送信' : 'ありがとう受け取り'}
+                    </div>
+                    <div style={{ color: '#a0c4a0', fontSize: 10, marginTop: 1 }}>
+                      {h.from_username ? `from ${h.from_username} · ` : h.to_username ? `to ${h.to_username} · ` : ''}{timeAgo(h.created_at)}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 13, fontFamily: 'monospace', fontWeight: 500, color: h.type === 'arigatou_sent' ? '#e24b4a' : '#3a7d44' }}>
+                    {h.type === 'arigatou_sent' ? '-' : '+'}{h.amount.toFixed(3)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       {tab === 'profile' && (
         <div style={{ padding: '14px 16px' }}>
           <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 12, fontWeight: 500 }}>PROFILE</div>
@@ -419,7 +488,7 @@ export default function Home() {
         {([
           { id: 'home', icon: '🏠', label: 'ホーム' },
           { id: 'ranking', icon: '🏆', label: 'ランク' },
-          { id: 'arigatou', icon: '💚', label: 'ありがとう' },
+          { id: 'wallet', icon: '👛', label: 'ウォレット' },
           { id: 'nft', icon: '🖼️', label: 'NFT' },
           { id: 'profile', icon: '👤', label: 'プロフィール' },
         ] as { id: Tab; icon: string; label: string }[]).map(({ id, icon, label }) => (
