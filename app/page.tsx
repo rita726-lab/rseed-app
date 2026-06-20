@@ -84,8 +84,8 @@ export default function Home() {
   const [rseed, setRseed] = useState(0)
   const [arigatouCount, setArigatouCount] = useState(0)
   const [mining, setMining] = useState(false)
-  const [canMine, setCanMine] = useState(true)
-  const [nextMine, setNextMine] = useState('')
+  const [accumulatedHours, setAccumulatedHours] = useState(0)
+  const [accumulatedRseed, setAccumulatedRseed] = useState(0)
   const [sent, setSent] = useState(false)
   const [loginError, setLoginError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -116,19 +116,21 @@ export default function Home() {
     setTimeout(() => setToast(''), 2500)
   }
 
+  const calcAccumulated = (lastMined: string | null) => {
+    if (!lastMined) return { hours: 24, rseed: 0.024 }
+    const diff = Date.now() - new Date(lastMined).getTime()
+    const hours = Math.min(Math.floor(diff / 3600000), 24)
+    return { hours, rseed: hours * 0.001 }
+  }
+
   const loadUser = async (uid: string) => {
     const { data, error } = await supabase.from('users').select('rseed, last_mined, arigatou_count').eq('id', uid).single()
     if (error || !data) { await supabase.from('users').insert({ id: uid, rseed: 0, arigatou_count: 0 }); return }
     setRseed(data.rseed ?? 0)
     setArigatouCount(data.arigatou_count ?? 0)
-    if (data.last_mined) {
-      const diff = Date.now() - new Date(data.last_mined).getTime()
-      if (diff < 86400000) {
-        setCanMine(false)
-        const rem = 86400000 - diff
-        setNextMine(`${Math.floor(rem / 3600000)}時間${Math.floor((rem % 3600000) / 60000)}分後`)
-      }
-    }
+    const { hours, rseed: acc } = calcAccumulated(data.last_mined)
+    setAccumulatedHours(hours)
+    setAccumulatedRseed(acc)
     const { data: hist } = await supabase.from('history').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(10)
     setHistory(hist ?? [])
   }
@@ -148,17 +150,18 @@ export default function Home() {
   }
 
   const handleMine = async () => {
-    if (!user || !canMine || mining) return
+    if (!user || accumulatedRseed <= 0 || mining) return
     setMining(true)
     await new Promise(r => setTimeout(r, 1200))
-    const newBalance = rseed + 0.001
+    const earned = accumulatedRseed
+    const newBalance = rseed + earned
     const { error } = await supabase.from('users').upsert({ id: user.id, rseed: newBalance, last_mined: new Date().toISOString() })
     if (!error) {
-      await supabase.from('history').insert({ user_id: user.id, type: 'mine', amount: 0.001 })
+      await supabase.from('history').insert({ user_id: user.id, type: 'mine', amount: earned })
       setRseed(newBalance)
-      setCanMine(false)
-      setNextMine('24時間後')
-      showToast('🌱 +0.001 RSEED 獲得！')
+      setAccumulatedHours(0)
+      setAccumulatedRseed(0)
+      showToast(`🌱 +${earned.toFixed(3)} RSEED 獲得！`)
       await loadRanking()
     }
     setMining(false)
@@ -239,11 +242,25 @@ export default function Home() {
             <div style={{ ...pill, marginBottom: 12, position: 'relative', zIndex: 1, fontSize: 11, padding: '3px 14px' }}>{userTitle} ✦</div>
             <div style={{ fontSize: 42, fontWeight: 500, color: '#2d6636', letterSpacing: 1, position: 'relative', zIndex: 1 }}>{rseed.toFixed(4)}</div>
             <div style={{ fontSize: 12, ...textMuted, marginTop: 2, position: 'relative', zIndex: 1 }}>RSEED</div>
-            <button onClick={handleMine} disabled={mining || !canMine}
-              style={{ display: 'block', width: '100%', marginTop: 16, padding: '14px 0', borderRadius: 30, background: canMine ? '#3a7d44' : '#c8e8bc', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: canMine ? 'pointer' : 'default', position: 'relative', zIndex: 1 }}>
-              {mining ? '採掘中...' : canMine ? '⛏️ 今日のマイニング' : '⏳ 採掘済み'}
+            <div style={{ background: '#f0f9ea', border: '0.5px solid #c8e8bc', borderRadius: 14, padding: '12px 16px', marginTop: 14, position: 'relative', zIndex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ ...textMuted, fontSize: 11 }}>溜まってるRSEED</div>
+                  <div style={{ color: '#2d6636', fontSize: 22, fontWeight: 500, marginTop: 2 }}>+{accumulatedRseed.toFixed(3)}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ ...textMuted, fontSize: 11 }}>経過時間</div>
+                  <div style={{ ...textGreen, fontSize: 22, fontWeight: 500, marginTop: 2 }}>{accumulatedHours}h / 24h</div>
+                </div>
+              </div>
+              <div style={{ background: '#d4eacc', borderRadius: 4, height: 5, overflow: 'hidden', marginTop: 10 }}>
+                <div style={{ background: '#3a7d44', height: '100%', width: `${(accumulatedHours / 24) * 100}%`, borderRadius: 4 }} />
+              </div>
+            </div>
+            <button onClick={handleMine} disabled={mining || accumulatedRseed <= 0}
+              style={{ display: 'block', width: '100%', marginTop: 10, padding: '14px 0', borderRadius: 30, background: accumulatedRseed > 0 ? '#3a7d44' : '#c8e8bc', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: accumulatedRseed > 0 ? 'pointer' : 'default', position: 'relative', zIndex: 1 }}>
+              {mining ? '受け取り中...' : accumulatedRseed > 0 ? `⛏️ ${accumulatedRseed.toFixed(3)} RSEEDを受け取る` : '⏳ 溜まるのを待ってね'}
             </button>
-            {!canMine && <div style={{ ...textMuted, fontSize: 11, marginTop: 6, position: 'relative', zIndex: 1 }}>次回：{nextMine}</div>}
             <button onClick={() => setTab('arigatou')}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 10, padding: '10px 0', borderRadius: 30, background: '#edf7e8', ...textGreen, fontSize: 13, border: '0.5px solid #b8dda8', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
               💚 ありがとうを送る
