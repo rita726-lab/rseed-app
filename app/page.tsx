@@ -90,6 +90,8 @@ export default function Home() {
   const [mining, setMining] = useState(false)
   const [accumulatedHours, setAccumulatedHours] = useState(0)
   const [accumulatedRseed, setAccumulatedRseed] = useState(0)
+  const [accumulatedFrac, setAccumulatedFrac] = useState(0)
+  const [lastMined, setLastMined] = useState<string | null>(null)
   const [loginError, setLoginError] = useState('')
   const [magicSent, setMagicSent] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -123,16 +125,29 @@ export default function Home() {
     return () => subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    if (!user) return
+    const id = setInterval(() => applyAccumulated(lastMined), 5000)
+    return () => clearInterval(id)
+  }, [user, lastMined])
+
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(''), 2500)
   }
 
-  const calcAccumulated = (lastMined: string | null) => {
-    if (!lastMined) return { hours: 24, rseed: 0.024 }
-    const diff = Date.now() - new Date(lastMined).getTime()
-    const hours = Math.min(Math.floor(diff / 3600000), 24)
-    return { hours, rseed: hours * 0.001 }
+  const calcAccumulated = (lm: string | null) => {
+    if (!lm) return { hours: 24, rseed: 0.024, frac: 1 }
+    const diff = Date.now() - new Date(lm).getTime()
+    const rawHours = Math.min(diff / 3600000, 24)
+    return { hours: Math.floor(rawHours), rseed: rawHours * 0.001, frac: rawHours / 24 }
+  }
+
+  const applyAccumulated = (lm: string | null) => {
+    const { hours, rseed: acc, frac } = calcAccumulated(lm)
+    setAccumulatedHours(hours)
+    setAccumulatedRseed(acc)
+    setAccumulatedFrac(frac)
   }
 
   const loadUser = async (uid: string) => {
@@ -142,9 +157,8 @@ export default function Home() {
     setArigatouCount(data.arigatou_count ?? 0)
     setUsername(data.username ?? '')
     setUsernameInput(data.username ?? '')
-    const { hours, rseed: acc } = calcAccumulated(data.last_mined)
-    setAccumulatedHours(hours)
-    setAccumulatedRseed(acc)
+    setLastMined(data.last_mined)
+    applyAccumulated(data.last_mined)
     const { data: hist } = await supabase.from('history').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(10)
     setHistory(hist ?? [])
   }
@@ -187,12 +201,13 @@ export default function Home() {
     await new Promise(r => setTimeout(r, 1200))
     const earned = accumulatedRseed
     const newBalance = rseed + earned
-    const { error } = await supabase.from('users').upsert({ id: user.id, rseed: newBalance, last_mined: new Date().toISOString() })
+    const now = new Date().toISOString()
+    const { error } = await supabase.from('users').upsert({ id: user.id, rseed: newBalance, last_mined: now })
     if (!error) {
       await supabase.from('history').insert({ user_id: user.id, type: 'mine', amount: earned })
       setRseed(newBalance)
-      setAccumulatedHours(0)
-      setAccumulatedRseed(0)
+      setLastMined(now)
+      applyAccumulated(now)
       showToast(`🌱 +${earned.toFixed(3)} RSEED 獲得！`)
       await loadRanking()
     }
@@ -314,12 +329,15 @@ export default function Home() {
                   <div style={{ color: '#2d6636', fontSize: 22, fontWeight: 500, marginTop: 2 }}>+{accumulatedRseed.toFixed(3)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ ...textMuted, fontSize: 11 }}>経過時間</div>
+                  <div style={{ ...textMuted, fontSize: 11 }}>{accumulatedFrac >= 1 ? '満タン 🌳' : '経過時間'}</div>
                   <div style={{ ...textGreen, fontSize: 22, fontWeight: 500, marginTop: 2 }}>{accumulatedHours}h / 24h</div>
                 </div>
               </div>
               <div style={{ background: '#d4eacc', borderRadius: 4, height: 5, overflow: 'hidden', marginTop: 10 }}>
-                <div style={{ background: '#3a7d44', height: '100%', width: `${(accumulatedHours / 24) * 100}%`, borderRadius: 4 }} />
+                <div style={{ background: accumulatedFrac >= 1 ? '#f0a830' : '#3a7d44', height: '100%', width: `${Math.min(accumulatedFrac * 100, 100)}%`, borderRadius: 4, transition: 'width 1s linear' }} />
+              </div>
+              <div style={{ ...textMuted, fontSize: 10, marginTop: 6, textAlign: 'center' }}>
+                {accumulatedFrac >= 1 ? '⛏️ 満タンだよ！受け取ろう' : '1時間で +0.001 RSEED・24時間で満タン'}
               </div>
             </div>
             <button onClick={handleMine} disabled={mining || accumulatedRseed <= 0}
