@@ -33,6 +33,8 @@ const TITLE_THRESHOLDS = [
 ]
 const TITLE_ORDER = ['SEED', 'SPROUT', 'BLOOM', 'LEGEND']
 
+const DISCORD_INVITE = 'https://discord.gg/VkPnNunw'
+
 const NFT_LIST = [
   { id: 'genesis', name: 'Genesis Seed', sub: '初期コラボ限定', tag: 'LEGEND限定', requiredTitle: 'LEGEND', color: '#edf7e8', icon: '🌳', image: '/nft/genesis.jpg' },
   { id: 'bloom', name: 'First Bloom', sub: 'ありがとう100回達成', tag: 'BLOOM到達', requiredTitle: 'BLOOM', color: '#e4f4dc', icon: '🌸', image: '/nft/bloom.jpg' },
@@ -545,6 +547,10 @@ export default function Home() {
             </div>
             {nameError && <p style={{ color: '#e24b4a', fontSize: 11, marginTop: 8 }}>{nameError}</p>}
           </div>
+          <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 14, padding: '13px 0', borderRadius: 30, background: '#5865F2', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer', textDecoration: 'none', boxSizing: 'border-box' }}>
+            <span style={{ fontSize: 17 }}>💬</span> Discordコミュニティに参加
+          </a>
           <button onClick={() => supabase.auth.signOut()}
             style={{ width: '100%', marginTop: 14, padding: '12px 0', borderRadius: 30, ...W, ...textMuted, border: '0.5px solid #c8e8bc', fontSize: 13, cursor: 'pointer' }}>
             ログアウト
