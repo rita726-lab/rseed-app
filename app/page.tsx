@@ -187,6 +187,11 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
+    const saved = localStorage.getItem('rseed_last_email')
+    if (saved) setEmail(saved)
+  }, [])
+
+  useEffect(() => {
     if (!user) return
     const id = setInterval(() => applyAccumulated(lastMined), 5000)
     return () => clearInterval(id)
@@ -263,6 +268,7 @@ export default function Home() {
     if (!trimmed.includes('@')) { setLoginError('メールアドレスが正しくありません'); return }
     const { error } = await supabase.auth.signInWithOtp({ email: trimmed })
     if (error) { setLoginError('送信に失敗しました：' + error.message); return }
+    localStorage.setItem('rseed_last_email', trimmed)
     setMagicSent(true)
   }
 
