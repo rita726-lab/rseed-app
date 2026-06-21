@@ -34,10 +34,10 @@ const TITLE_THRESHOLDS = [
 const TITLE_ORDER = ['SEED', 'SPROUT', 'BLOOM', 'LEGEND']
 
 const NFT_LIST = [
-  { id: 'genesis', name: 'Genesis Seed', sub: '初期コラボ限定', tag: 'LEGEND限定', requiredTitle: 'LEGEND', color: '#edf7e8', icon: '🌳' },
-  { id: 'bloom', name: 'First Bloom', sub: 'ありがとう100回達成', tag: 'BLOOM到達', requiredTitle: 'BLOOM', color: '#e4f4dc', icon: '🌸' },
-  { id: 'warm', name: 'Warm Thanks', sub: '感謝送信50回', tag: 'コミュニティ', requiredTitle: 'SPROUT', color: '#f0f9ea', icon: '🌿' },
-  { id: 'seed', name: 'First Seed', sub: '初回マイニング記念', tag: 'SEED', requiredTitle: 'SEED', color: '#f7fbf4', icon: '🌱' },
+  { id: 'genesis', name: 'Genesis Seed', sub: '初期コラボ限定', tag: 'LEGEND限定', requiredTitle: 'LEGEND', color: '#edf7e8', icon: '🌳', image: '/nft/genesis.jpg' },
+  { id: 'bloom', name: 'First Bloom', sub: 'ありがとう100回達成', tag: 'BLOOM到達', requiredTitle: 'BLOOM', color: '#e4f4dc', icon: '🌸', image: '/nft/bloom.jpg' },
+  { id: 'warm', name: 'Warm Thanks', sub: '感謝送信50回', tag: 'コミュニティ', requiredTitle: 'SPROUT', color: '#f0f9ea', icon: '🌿', image: '/nft/sprout.jpg' },
+  { id: 'seed', name: 'First Seed', sub: '初回マイニング記念', tag: 'SEED', requiredTitle: 'SEED', color: '#f7fbf4', icon: '🌱', image: '/nft/seed.jpg' },
 ]
 
 function getTitle(count: number) {
@@ -407,11 +407,12 @@ export default function Home() {
             {NFT_LIST.map(nft => {
               const unlocked = isNftUnlocked(nft, userTitle)
               return (
-                <div key={nft.id} style={{ ...W, border: unlocked ? borderGreen : '0.5px dashed #c8e8bc', borderRadius: 14, overflow: 'hidden', opacity: unlocked ? 1 : 0.6 }}>
-                  <div style={{ height: 100, background: nft.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 42, position: 'relative' }}>
-                    {nft.icon}
+                <div key={nft.id} style={{ ...W, border: unlocked ? borderGreen : '0.5px dashed #c8e8bc', borderRadius: 14, overflow: 'hidden', opacity: unlocked ? 1 : 0.85 }}>
+                  <div style={{ height: 120, background: nft.color, position: 'relative' }}>
+                    <img src={nft.image} alt={nft.name} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: unlocked ? 'none' : 'grayscale(0.7) blur(2px)' }} />
+                    <div style={{ position: 'absolute', top: 6, left: 6, fontSize: 18, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>{nft.icon}</div>
                     {!unlocked && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(247,251,244,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🔒</div>
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(247,251,244,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🔒</div>
                     )}
                   </div>
                   <div style={{ padding: '8px 10px' }}>
@@ -425,8 +426,8 @@ export default function Home() {
             })}
           </div>
           <div style={{ marginTop: 14, padding: '12px 14px', background: '#edf7e8', borderRadius: 12, border: '0.5px solid #c8e8bc' }}>
-            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500 }}>NFT画像は制作中</div>
-            <div style={{ ...textMuted, fontSize: 11, marginTop: 4 }}>AI生成＋デザイナーコラボで制作中。お楽しみに！</div>
+            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500 }}>🌱 称号を上げてNFTを解放しよう</div>
+            <div style={{ ...textMuted, fontSize: 11, marginTop: 4, lineHeight: 1.6 }}>ありがとうを送るほど称号が上がり、新しいNFTがアンロックされるよ。LEGENDだけのGenesis Seedは限定10枚🌳</div>
           </div>
         </div>
       )}
