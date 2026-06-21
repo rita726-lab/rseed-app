@@ -101,6 +101,7 @@ export default function Home() {
   const [accumulatedFrac, setAccumulatedFrac] = useState(0)
   const [lastMined, setLastMined] = useState<string | null>(null)
   const [showTutorial, setShowTutorial] = useState(false)
+  const [selectedNft, setSelectedNft] = useState<typeof NFT_LIST[0] | null>(null)
   const [loginError, setLoginError] = useState('')
   const [magicSent, setMagicSent] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -349,6 +350,54 @@ export default function Home() {
         </div>
       )}
 
+      {selectedNft && (() => {
+        const unlocked = isNftUnlocked(selectedNft, userTitle)
+        return (
+          <div onClick={() => setSelectedNft(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(45,74,45,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div onClick={e => e.stopPropagation()}
+              style={{ ...W, borderRadius: 24, width: '100%', maxWidth: 360, maxHeight: '88vh', overflowY: 'auto', overflowX: 'hidden' }}>
+              <div style={{ position: 'relative' }}>
+                <img src={selectedNft.image} alt={selectedNft.name} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block', filter: unlocked ? 'none' : 'grayscale(0.7) blur(3px)' }} />
+                <button onClick={() => setSelectedNft(null)} aria-label="閉じる"
+                  style={{ position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: 'none', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                {!unlocked && (
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44 }}>🔒</div>
+                )}
+              </div>
+              <div style={{ padding: '18px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 22 }}>{selectedNft.icon}</span>
+                  <span style={{ ...textPrimary, fontSize: 18, fontWeight: 500 }}>{selectedNft.name}</span>
+                </div>
+                <div style={{ ...textMuted, fontSize: 13, marginTop: 4 }}>{selectedNft.sub}</div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                  <span style={{ ...pill, fontSize: 11 }}>{selectedNft.tag}</span>
+                  <span style={{ ...pill, fontSize: 11 }}>必要称号：{selectedNft.requiredTitle}</span>
+                  <span style={{ ...pill, fontSize: 11, background: unlocked ? '#edf7e8' : '#fff0f0', color: unlocked ? '#3a7d44' : '#c47', border: unlocked ? '0.5px solid #c8e8bc' : '0.5px solid #f0c8c8' }}>
+                    {unlocked ? '✅ 解放済み' : '🔒 未解放'}
+                  </span>
+                </div>
+                <div style={{ marginTop: 14, padding: '12px 14px', background: '#f7fbf4', borderRadius: 12, border: '0.5px solid #e0f0d8' }}>
+                  <div style={{ ...textGreen, fontSize: 11, fontWeight: 500, marginBottom: 4 }}>RSEED Collection</div>
+                  <div style={{ ...textMuted, fontSize: 12, lineHeight: 1.7 }}>
+                    {unlocked
+                      ? `おめでとう！「${selectedNft.name}」を保有してるよ🌱 称号が上がるたびに新しいNFTが解放される。将来はBNB Chainでミントして本物のNFTにできる予定。`
+                      : `このNFTは「${selectedNft.requiredTitle}」称号で解放されるよ。ありがとうを送り合って称号を上げよう🌱`}
+                  </div>
+                </div>
+                {!unlocked && (
+                  <button onClick={() => { setSelectedNft(null); setTab('arigatou') }}
+                    style={{ width: '100%', marginTop: 12, padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer' }}>
+                    💚 ありがとうを送って称号を上げる
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {toast && (
         <div style={{ position: 'fixed', bottom: 88, left: '50%', transform: 'translateX(-50%)', background: '#3a7d44', color: '#fff', fontSize: 13, padding: '8px 20px', borderRadius: 20, zIndex: 100, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
           {toast}
@@ -480,7 +529,7 @@ export default function Home() {
             {NFT_LIST.map(nft => {
               const unlocked = isNftUnlocked(nft, userTitle)
               return (
-                <div key={nft.id} style={{ ...W, border: unlocked ? borderGreen : '0.5px dashed #c8e8bc', borderRadius: 14, overflow: 'hidden', opacity: unlocked ? 1 : 0.85 }}>
+                <div key={nft.id} onClick={() => setSelectedNft(nft)} style={{ ...W, border: unlocked ? borderGreen : '0.5px dashed #c8e8bc', borderRadius: 14, overflow: 'hidden', opacity: unlocked ? 1 : 0.85, cursor: 'pointer' }}>
                   <div style={{ height: 120, background: nft.color, position: 'relative' }}>
                     <img src={nft.image} alt={nft.name} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: unlocked ? 'none' : 'grayscale(0.7) blur(2px)' }} />
                     <div style={{ position: 'absolute', top: 6, left: 6, fontSize: 18, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>{nft.icon}</div>
