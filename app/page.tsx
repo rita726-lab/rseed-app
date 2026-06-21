@@ -291,7 +291,7 @@ export default function Home() {
     const earned = accumulatedRseed
     const newBalance = rseed + earned
     const now = new Date().toISOString()
-    const { error } = await supabase.from('users').upsert({ id: user.id, rseed: newBalance, last_mined: now })
+    const { error } = await supabase.from('users').update({ rseed: newBalance, last_mined: now }).eq('id', user.id)
     if (!error) {
       await supabase.from('history').insert({ user_id: user.id, type: 'mine', amount: earned })
       setRseed(newBalance)
@@ -299,6 +299,8 @@ export default function Home() {
       applyAccumulated(now)
       showToast(`🌱 +${earned.toFixed(3)} RSEED 獲得！`)
       await loadRanking()
+    } else {
+      showToast('⚠️ 保存に失敗：' + error.message)
     }
     setMining(false)
   }
