@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import type { User } from '@supabase/supabase-js'
 
@@ -15,6 +15,7 @@ type RankUser = {
   username: string
   rseed: number
   arigatou_count: number
+  avatar?: string
 }
 
 type HistoryItem = {
@@ -34,6 +35,7 @@ const TITLE_THRESHOLDS = [
 const TITLE_ORDER = ['SEED', 'SPROUT', 'BLOOM', 'LEGEND']
 
 const DISCORD_INVITE = 'https://discord.gg/VkPnNunw'
+const AVATAR_CHOICES = ['🌱', '🌿', '🌸', '🌳', '🍀', '🌻', '🐰', '🐿️', '🦊', '🐸', '🦋', '🐝']
 const NOTE_TUTORIAL_URL = 'https://note.com/rita_sunada' // TODO: チュートリアル記事のURLに差し替え
 
 const TUTORIAL_STEPS = [
@@ -89,6 +91,49 @@ function Tree({ style }: { style?: React.CSSProperties }) {
   )
 }
 
+function Fireworks({ onDone }: { onDone: () => void }) {
+  const ref = useRef<HTMLCanvasElement | null>(null)
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    const W = canvas.width = window.innerWidth
+    const H = canvas.height = window.innerHeight
+    const colors = ['#3a7d44', '#6ab86a', '#f0a830', '#e85d8a', '#5b8def', '#ffd24a']
+    type P = { x: number; y: number; vx: number; vy: number; life: number; color: string }
+    let particles: P[] = []
+    const burst = (cx: number, cy: number) => {
+      const color = colors[Math.floor(Math.random() * colors.length)]
+      for (let i = 0; i < 46; i++) {
+        const a = (Math.PI * 2 * i) / 46
+        const s = 2 + Math.random() * 4
+        particles.push({ x: cx, y: cy, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color })
+      }
+    }
+    let bursts = 0
+    const interval = setInterval(() => {
+      burst(W * (0.2 + Math.random() * 0.6), H * (0.2 + Math.random() * 0.4))
+      if (++bursts >= 5) clearInterval(interval)
+    }, 350)
+    let raf = 0
+    const loop = () => {
+      ctx.clearRect(0, 0, W, H)
+      particles.forEach(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life -= 0.016
+        ctx.globalAlpha = Math.max(p.life, 0)
+        ctx.fillStyle = p.color
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill()
+      })
+      particles = particles.filter(p => p.life > 0)
+      if (particles.length > 0 || bursts < 5) raf = requestAnimationFrame(loop)
+      else onDone()
+    }
+    raf = requestAnimationFrame(loop)
+    return () => { clearInterval(interval); cancelAnimationFrame(raf) }
+  }, [onDone])
+  return <canvas ref={ref} style={{ position: 'fixed', inset: 0, zIndex: 300, pointerEvents: 'none' }} />
+}
+
 export default function Home() {
   const [tab, setTab] = useState<Tab>('home')
   const [email, setEmail] = useState('')
@@ -102,6 +147,9 @@ export default function Home() {
   const [lastMined, setLastMined] = useState<string | null>(null)
   const [showTutorial, setShowTutorial] = useState(false)
   const [selectedNft, setSelectedNft] = useState<typeof NFT_LIST[0] | null>(null)
+  const [fireworks, setFireworks] = useState(false)
+  const [avatar, setAvatar] = useState('')
+  const prevTitleRef = useRef<string | null>(null)
   const [loginError, setLoginError] = useState('')
   const [magicSent, setMagicSent] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -144,6 +192,15 @@ export default function Home() {
     return () => clearInterval(id)
   }, [user, lastMined])
 
+  useEffect(() => {
+    const prev = prevTitleRef.current
+    if (prev && TITLE_ORDER.indexOf(userTitle) > TITLE_ORDER.indexOf(prev)) {
+      setFireworks(true)
+      showToast(`🎉 称号アップ！「${userTitle}」になったよ`)
+    }
+    prevTitleRef.current = userTitle
+  }, [userTitle])
+
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(''), 2500)
@@ -152,6 +209,15 @@ export default function Home() {
   const closeTutorial = () => {
     localStorage.setItem('rseed_tutorial_seen', '1')
     setShowTutorial(false)
+  }
+
+  const handlePickAvatar = async (emoji: string) => {
+    if (!user) return
+    setAvatar(emoji)
+    const { error } = await supabase.from('users').update({ avatar: emoji }).eq('id', user.id)
+    if (error) { showToast('⚠️ アバター列がまだ無いかも'); return }
+    showToast('✨ アバターを変更したよ！')
+    await loadRanking()
   }
 
   const calcAccumulated = (lm: string | null) => {
@@ -177,12 +243,17 @@ export default function Home() {
     setUsernameInput(data.username ?? '')
     setLastMined(data.last_mined)
     applyAccumulated(data.last_mined)
+    const { data: av } = await supabase.from('users').select('avatar').eq('id', uid).maybeSingle()
+    if (av?.avatar) setAvatar(av.avatar)
     const { data: hist } = await supabase.from('history').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(10)
     setHistory(hist ?? [])
   }
 
   const loadRanking = async () => {
-    const { data } = await supabase.from('users').select('id, username, rseed, arigatou_count').order('rseed', { ascending: false }).limit(10)
+    const withAvatar = await supabase.from('users').select('id, username, rseed, arigatou_count, avatar').order('rseed', { ascending: false }).limit(10)
+    const data: RankUser[] | null = withAvatar.data
+      ? withAvatar.data
+      : (await supabase.from('users').select('id, username, rseed, arigatou_count').order('rseed', { ascending: false }).limit(10)).data
     setRanking(data ?? [])
   }
 
@@ -271,6 +342,7 @@ export default function Home() {
     await supabase.from('history').insert({ user_id: user.id, type: diff >= 0 ? 'arigatou_received' : 'arigatou_sent', amount: Math.abs(diff) })
     setRseed(newBalance)
     setKujiResult({ type, payout, bet })
+    if (type === 'big') setFireworks(true)
     setKujiPlaying(false)
   }
 
@@ -317,6 +389,8 @@ export default function Home() {
 
   return (
     <main style={{ minHeight: '100vh', ...G, maxWidth: 420, margin: '0 auto', position: 'relative', paddingBottom: 75 }}>
+
+      {fireworks && <Fireworks onDone={() => setFireworks(false)} />}
 
       {showTutorial && (
         <div onClick={closeTutorial}
@@ -478,8 +552,8 @@ export default function Home() {
           {ranking.map((u, i) => (
             <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '0.5px solid #e8f4e0' }}>
               <div style={{ color: '#b8dda8', fontSize: 13, width: 20, textAlign: 'center' }}>{i + 1}</div>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#edf7e8', border: '0.5px solid #c8e8bc', display: 'flex', alignItems: 'center', justifyContent: 'center', ...textGreen, fontSize: 12, fontWeight: 500 }}>
-                {(u.username ?? 'U').slice(0, 2).toUpperCase()}
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#edf7e8', border: '0.5px solid #c8e8bc', display: 'flex', alignItems: 'center', justifyContent: 'center', ...textGreen, fontSize: u.avatar ? 18 : 12, fontWeight: 500 }}>
+                {u.avatar || (u.username ?? 'U').slice(0, 2).toUpperCase()}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ ...textPrimary, fontSize: 13 }}>{u.username ?? '匿名'}</div>
@@ -619,8 +693,8 @@ export default function Home() {
           <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 12, fontWeight: 500 }}>PROFILE</div>
           <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '18px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#edf7e8', border: '0.5px solid #b8dda8', display: 'flex', alignItems: 'center', justifyContent: 'center', ...textGreen, fontSize: 14, fontWeight: 500 }}>
-                {(username || user.email || 'U').slice(0, 2).toUpperCase()}
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#edf7e8', border: '0.5px solid #b8dda8', display: 'flex', alignItems: 'center', justifyContent: 'center', ...textGreen, fontSize: avatar ? 24 : 14, fontWeight: 500 }}>
+                {avatar || (username || user.email || 'U').slice(0, 2).toUpperCase()}
               </div>
               <div>
                 <div style={{ ...textPrimary, fontSize: 14, fontWeight: 500 }}>{username || '名前未設定'}</div>
@@ -666,6 +740,18 @@ export default function Home() {
               </button>
             </div>
             {nameError && <p style={{ color: '#e24b4a', fontSize: 11, marginTop: 8 }}>{nameError}</p>}
+          </div>
+          <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '16px', marginTop: 14 }}>
+            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 4 }}>🎨 アバター</div>
+            <div style={{ ...textMuted, fontSize: 10, marginBottom: 10 }}>好きなアイコンを選んでね</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {AVATAR_CHOICES.map(emoji => (
+                <button key={emoji} onClick={() => handlePickAvatar(emoji)}
+                  style={{ width: 42, height: 42, borderRadius: '50%', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', background: avatar === emoji ? '#3a7d44' : '#f7fbf4', border: avatar === emoji ? '2px solid #2d6636' : '0.5px solid #c8e8bc' }}>
+                  {emoji}
+                </button>
+              ))}
+            </div>
           </div>
           <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 14, padding: '13px 0', borderRadius: 30, background: '#5865F2', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer', textDecoration: 'none', boxSizing: 'border-box' }}>
