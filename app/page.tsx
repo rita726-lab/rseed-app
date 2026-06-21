@@ -34,6 +34,14 @@ const TITLE_THRESHOLDS = [
 const TITLE_ORDER = ['SEED', 'SPROUT', 'BLOOM', 'LEGEND']
 
 const DISCORD_INVITE = 'https://discord.gg/VkPnNunw'
+const NOTE_TUTORIAL_URL = 'https://note.com/rita_sunada' // TODO: チュートリアル記事のURLに差し替え
+
+const TUTORIAL_STEPS = [
+  { icon: '🌱', title: 'RSEEDってなに？', body: '「ありがとう」に価値を持たせる経済圏。感謝を送り合うほど、みんなのRSEEDが育つよ。' },
+  { icon: '⛏️', title: 'まずはマイニング', body: 'ホーム画面で1時間ごとにRSEEDが貯まる（24時間で満タン）。「受け取る」を押して獲得しよう。' },
+  { icon: '💚', title: 'ありがとうを送る', body: '相手のユーザー名を入れてありがとうを送ると、相手のRSEEDと称号が上がるよ。' },
+  { icon: '🖼️', title: '称号とNFT', body: 'ありがとうを集めるとSEED→SPROUT→BLOOM→LEGENDと称号アップ。新しいNFTも解放される。' },
+]
 
 const NFT_LIST = [
   { id: 'genesis', name: 'Genesis Seed', sub: '初期コラボ限定', tag: 'LEGEND限定', requiredTitle: 'LEGEND', color: '#edf7e8', icon: '🌳', image: '/nft/genesis.jpg' },
@@ -92,6 +100,7 @@ export default function Home() {
   const [accumulatedRseed, setAccumulatedRseed] = useState(0)
   const [accumulatedFrac, setAccumulatedFrac] = useState(0)
   const [lastMined, setLastMined] = useState<string | null>(null)
+  const [showTutorial, setShowTutorial] = useState(false)
   const [loginError, setLoginError] = useState('')
   const [magicSent, setMagicSent] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -119,7 +128,10 @@ export default function Home() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_, session) => {
       const u = session?.user ?? null
       setUser(u)
-      if (u) { await loadUser(u.id); await loadRanking() }
+      if (u) {
+        await loadUser(u.id); await loadRanking()
+        if (!localStorage.getItem('rseed_tutorial_seen')) setShowTutorial(true)
+      }
       setLoading(false)
     })
     return () => subscription.unsubscribe()
@@ -134,6 +146,11 @@ export default function Home() {
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(''), 2500)
+  }
+
+  const closeTutorial = () => {
+    localStorage.setItem('rseed_tutorial_seen', '1')
+    setShowTutorial(false)
   }
 
   const calcAccumulated = (lm: string | null) => {
@@ -300,6 +317,38 @@ export default function Home() {
   return (
     <main style={{ minHeight: '100vh', ...G, maxWidth: 420, margin: '0 auto', position: 'relative', paddingBottom: 75 }}>
 
+      {showTutorial && (
+        <div onClick={closeTutorial}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(45,74,45,0.45)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ ...W, borderRadius: 24, padding: '24px 22px', width: '100%', maxWidth: 360, maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 28, fontWeight: 500, letterSpacing: 3, ...textGreen }}>RSEED</div>
+              <div style={{ ...textMuted, fontSize: 12, marginTop: 2 }}>はじめてガイド 🌱</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {TUTORIAL_STEPS.map((s, i) => (
+                <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{ fontSize: 24, flexShrink: 0, width: 38, height: 38, borderRadius: '50%', background: '#edf7e8', border: '0.5px solid #c8e8bc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{s.icon}</div>
+                  <div>
+                    <div style={{ ...textPrimary, fontSize: 14, fontWeight: 500 }}>{s.title}</div>
+                    <div style={{ ...textMuted, fontSize: 12, marginTop: 2, lineHeight: 1.6 }}>{s.body}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <a href={NOTE_TUTORIAL_URL} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 18, padding: '12px 0', borderRadius: 30, background: '#edf7e8', ...textGreen, fontSize: 13, border: '0.5px solid #b8dda8', textDecoration: 'none', boxSizing: 'border-box' }}>
+              📖 noteで詳しく読む
+            </a>
+            <button onClick={closeTutorial}
+              style={{ width: '100%', marginTop: 10, padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer' }}>
+              🌱 はじめる
+            </button>
+          </div>
+        </div>
+      )}
+
       {toast && (
         <div style={{ position: 'fixed', bottom: 88, left: '50%', transform: 'translateX(-50%)', background: '#3a7d44', color: '#fff', fontSize: 13, padding: '8px 20px', borderRadius: 20, zIndex: 100, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
           {toast}
@@ -311,7 +360,11 @@ export default function Home() {
           <div style={{ fontSize: 20, fontWeight: 500, letterSpacing: 4, ...textGreen }}>RSEED</div>
           <div style={{ fontSize: 10, ...textMuted, letterSpacing: 1 }}>RITATASEED</div>
         </div>
-        <div style={{ background: '#edf7e8', border: '0.5px solid #c8e8bc', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>🔔</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setShowTutorial(true)} aria-label="使い方"
+            style={{ background: '#edf7e8', border: '0.5px solid #c8e8bc', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, cursor: 'pointer' }}>❓</button>
+          <div style={{ background: '#edf7e8', border: '0.5px solid #c8e8bc', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>🔔</div>
+        </div>
       </div>
 
       {tab === 'home' && (
