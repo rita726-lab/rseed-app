@@ -101,6 +101,10 @@ export default function Home() {
   const [kujiAmount, setKujiAmount] = useState('0.01')
   const [kujiResult, setKujiResult] = useState<null | { type: 'big' | 'mid' | 'miss'; payout: number; bet: number }>(null)
   const [kujiPlaying, setKujiPlaying] = useState(false)
+  const [username, setUsername] = useState('')
+  const [usernameInput, setUsernameInput] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [nameError, setNameError] = useState('')
 
   const userTitle = getTitle(arigatouCount)
   const nextTitle = getNextTitle(userTitle)
@@ -130,10 +134,12 @@ export default function Home() {
   }
 
   const loadUser = async (uid: string) => {
-    const { data, error } = await supabase.from('users').select('rseed, last_mined, arigatou_count').eq('id', uid).single()
+    const { data, error } = await supabase.from('users').select('rseed, last_mined, arigatou_count, username').eq('id', uid).single()
     if (error || !data) { await supabase.from('users').insert({ id: uid, rseed: 0, arigatou_count: 0 }); return }
     setRseed(data.rseed ?? 0)
     setArigatouCount(data.arigatou_count ?? 0)
+    setUsername(data.username ?? '')
+    setUsernameInput(data.username ?? '')
     const { hours, rseed: acc } = calcAccumulated(data.last_mined)
     setAccumulatedHours(hours)
     setAccumulatedRseed(acc)
@@ -153,6 +159,24 @@ export default function Home() {
     const { error } = await supabase.auth.signInWithOtp({ email: trimmed })
     if (error) { setLoginError('送信に失敗しました：' + error.message); return }
     setMagicSent(true)
+  }
+
+  const handleSaveUsername = async () => {
+    if (!user) return
+    setNameError('')
+    const name = usernameInput.trim()
+    if (name.length < 2) { setNameError('2文字以上にしてね'); return }
+    if (name.length > 16) { setNameError('16文字以内にしてね'); return }
+    if (!/^[a-zA-Z0-9_ぁ-んァ-ヶー一-龠]+$/.test(name)) { setNameError('使えない文字が含まれてるよ'); return }
+    setSavingName(true)
+    const { data: existing } = await supabase.from('users').select('id').eq('username', name).neq('id', user.id).maybeSingle()
+    if (existing) { setNameError('この名前はもう使われてるよ'); setSavingName(false); return }
+    const { error } = await supabase.from('users').update({ username: name }).eq('id', user.id)
+    setSavingName(false)
+    if (error) { setNameError('保存に失敗しました'); return }
+    setUsername(name)
+    await loadRanking()
+    showToast('✨ 名前を保存したよ！')
   }
 
   const handleMine = async () => {
@@ -473,10 +497,10 @@ export default function Home() {
           <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '18px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#edf7e8', border: '0.5px solid #b8dda8', display: 'flex', alignItems: 'center', justifyContent: 'center', ...textGreen, fontSize: 14, fontWeight: 500 }}>
-                {user.email?.slice(0, 2).toUpperCase()}
+                {(username || user.email || 'U').slice(0, 2).toUpperCase()}
               </div>
               <div>
-                <div style={{ ...textPrimary, fontSize: 14, fontWeight: 500 }}>{user.email}</div>
+                <div style={{ ...textPrimary, fontSize: 14, fontWeight: 500 }}>{username || '名前未設定'}</div>
                 <div style={{ ...textGreen, fontSize: 11, marginTop: 2 }}>{userTitle} ✦ ありがとう累計 {arigatouCount}回</div>
               </div>
             </div>
@@ -506,6 +530,19 @@ export default function Home() {
                 </>
               )}
             </div>
+          </div>
+          <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '16px', marginTop: 14 }}>
+            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 4 }}>👤 ユーザー名</div>
+            <div style={{ ...textMuted, fontSize: 10, marginBottom: 10 }}>ランキングやありがとうで表示される名前だよ</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input type="text" placeholder="名前を入力（2〜16文字）" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveUsername()}
+                style={{ flex: 1, padding: '11px 14px', borderRadius: 12, border: '0.5px solid #c8e8bc', background: '#f7fbf4', color: '#2d4a2d', fontSize: 14, outline: 'none', minWidth: 0 }} />
+              <button onClick={handleSaveUsername} disabled={savingName || usernameInput.trim() === username}
+                style={{ padding: '0 18px', borderRadius: 12, background: (savingName || usernameInput.trim() === username) ? '#c8e8bc' : '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 13, border: 'none', cursor: (savingName || usernameInput.trim() === username) ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>
+                {savingName ? '...' : '保存'}
+              </button>
+            </div>
+            {nameError && <p style={{ color: '#e24b4a', fontSize: 11, marginTop: 8 }}>{nameError}</p>}
           </div>
           <button onClick={() => supabase.auth.signOut()}
             style={{ width: '100%', marginTop: 14, padding: '12px 0', borderRadius: 30, ...W, ...textMuted, border: '0.5px solid #c8e8bc', fontSize: 13, cursor: 'pointer' }}>
