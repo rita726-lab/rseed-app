@@ -219,8 +219,8 @@ export default function Home() {
   const handlePickAvatar = async (emoji: string) => {
     if (!user) return
     setAvatar(emoji)
-    const { error } = await supabase.from('users').update({ avatar: emoji }).eq('id', user.id)
-    if (error) { showToast('⚠️ アバター列がまだ無いかも'); return }
+    const { error } = await supabase.from('users').upsert({ id: user.id, avatar: emoji }, { onConflict: 'id' })
+    if (error) { showToast('⚠️ 保存に失敗：' + error.message); return }
     showToast('✨ アバターを変更したよ！')
     await loadRanking()
   }
@@ -240,16 +240,17 @@ export default function Home() {
   }
 
   const loadUser = async (uid: string) => {
-    const { data, error } = await supabase.from('users').select('rseed, last_mined, arigatou_count, username').eq('id', uid).single()
-    if (error || !data) { await supabase.from('users').insert({ id: uid, rseed: 0, arigatou_count: 0 }); return }
+    // 行が無ければ作る（既にあれば何もしない）→ 以降の保存が必ず通るように
+    await supabase.from('users').upsert({ id: uid, rseed: 0, arigatou_count: 0 }, { onConflict: 'id', ignoreDuplicates: true })
+    const { data } = await supabase.from('users').select('rseed, last_mined, arigatou_count, username, avatar').eq('id', uid).single()
+    if (!data) return
     setRseed(data.rseed ?? 0)
     setArigatouCount(data.arigatou_count ?? 0)
     setUsername(data.username ?? '')
     setUsernameInput(data.username ?? '')
+    if (data.avatar) setAvatar(data.avatar)
     setLastMined(data.last_mined)
     applyAccumulated(data.last_mined)
-    const { data: av } = await supabase.from('users').select('avatar').eq('id', uid).maybeSingle()
-    if (av?.avatar) setAvatar(av.avatar)
     const { data: hist } = await supabase.from('history').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(10)
     setHistory(hist ?? [])
   }
@@ -297,7 +298,7 @@ export default function Home() {
     const earned = accumulatedRseed
     const newBalance = rseed + earned
     const now = new Date().toISOString()
-    const { error } = await supabase.from('users').update({ rseed: newBalance, last_mined: now }).eq('id', user.id)
+    const { error } = await supabase.from('users').upsert({ id: user.id, rseed: newBalance, last_mined: now }, { onConflict: 'id' })
     if (!error) {
       await supabase.from('history').insert({ user_id: user.id, type: 'mine', amount: earned })
       setRseed(newBalance)
