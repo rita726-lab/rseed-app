@@ -81,6 +81,9 @@ const STR = {
     kujiRange: '0.001〜10 RSEEDで入力してね', kujiNotEnough: 'RSEEDが足りない！', titleUp: (t: string) => `🎉 称号アップ！「${t}」になったよ`, avatarSaved: '✨ アバターを変更したよ！',
     navHome: 'ホーム', navRank: 'ランク', navKuji: 'くじ', navNft: 'NFT', navProfile: 'プロフィール',
     notifTitle: 'お知らせ', notifEmpty: 'まだお知らせはないよ', gotArigatou: '🌱 ありがとうをもらった！', navWallet: 'ウォレット',
+    share: '📤 シェアする', linkCopied: '📋 シェア文をコピーしたよ！',
+    shareUnlocked: (n: string) => `🌱 RSEEDで「${n}」NFTを手に入れた！感謝が価値になる経済圏 #RSEED #RITATASEED`,
+    shareLocked: (n: string) => `🌱 RSEEDで「${n}」NFTを目指してるよ！感謝が価値になる経済圏 #RSEED #RITATASEED`,
   },
   en: {
     loading: 'Loading...', mailSent: 'Email sent!', mailSentDesc: 'Tap the link in the email to log in 🌱', tryAnother: 'Try another email',
@@ -108,6 +111,9 @@ const STR = {
     kujiRange: 'Enter between 0.001 and 10 RSEED', kujiNotEnough: 'Not enough RSEED!', titleUp: (t: string) => `🎉 Rank up! You're now ${t}`, avatarSaved: '✨ Avatar updated!',
     navHome: 'Home', navRank: 'Rank', navKuji: 'Lottery', navNft: 'NFT', navProfile: 'Profile',
     notifTitle: 'Notifications', notifEmpty: 'No notifications yet', gotArigatou: '🌱 You received arigatou!', navWallet: 'Wallet',
+    share: '📤 Share', linkCopied: '📋 Share text copied!',
+    shareUnlocked: (n: string) => `🌱 I got the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
+    shareLocked: (n: string) => `🌱 I'm aiming for the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
   },
 }
 
@@ -299,6 +305,30 @@ export default function Home() {
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(''), 2500)
+  }
+
+  const handleShareNft = async (nft: typeof NFT_LIST[0]) => {
+    const unlocked = isNftUnlocked(nft, userTitle)
+    const text = unlocked ? t.shareUnlocked(nft.name) : t.shareLocked(nft.name)
+    const url = typeof window !== 'undefined' ? window.location.origin : ''
+    const nav = typeof navigator !== 'undefined' ? navigator : undefined
+    try {
+      if (nav?.share) {
+        try {
+          const res = await fetch(nft.image)
+          const blob = await res.blob()
+          const file = new File([blob], `${nft.id}.jpg`, { type: blob.type })
+          if (nav.canShare?.({ files: [file] })) {
+            await nav.share({ title: nft.name, text, url, files: [file] })
+            return
+          }
+        } catch {}
+        await nav.share({ title: nft.name, text, url })
+      } else {
+        await nav?.clipboard?.writeText(`${text}\n${url}`)
+        showToast(t.linkCopied)
+      }
+    } catch {}
   }
 
   const closeTutorial = () => {
@@ -588,9 +618,13 @@ export default function Home() {
                     {unlocked ? t.nftUnlockedDesc(selectedNft.name) : t.nftLockedDesc(selectedNft.requiredTitle)}
                   </div>
                 </div>
+                <button onClick={() => handleShareNft(selectedNft)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 12, padding: '12px 0', borderRadius: 30, background: '#edf7e8', ...textGreen, fontWeight: 500, fontSize: 14, border: '0.5px solid #b8dda8', cursor: 'pointer' }}>
+                  {t.share}
+                </button>
                 {!unlocked && (
                   <button onClick={() => { setSelectedNft(null); setTab('arigatou') }}
-                    style={{ width: '100%', marginTop: 12, padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer' }}>
+                    style={{ width: '100%', marginTop: 10, padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer' }}>
                     {t.sendToUnlock}
                   </button>
                 )}
