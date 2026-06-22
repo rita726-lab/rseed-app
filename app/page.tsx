@@ -80,6 +80,7 @@ const STR = {
     nameSaved: '✨ 名前を保存したよ！', earned: (a: string) => `🌱 +${a} RSEED 獲得！`, saveFailed: '⚠️ 保存に失敗：', userNotFound: 'ユーザーが見つかりません', notEnough: 'RSEEDが足りません', arigatouToast: '💚 ありがとうを送ったよ！',
     kujiRange: '0.001〜10 RSEEDで入力してね', kujiNotEnough: 'RSEEDが足りない！', titleUp: (t: string) => `🎉 称号アップ！「${t}」になったよ`, avatarSaved: '✨ アバターを変更したよ！',
     navHome: 'ホーム', navRank: 'ランク', navKuji: 'くじ', navNft: 'NFT', navProfile: 'プロフィール',
+    notifTitle: 'お知らせ', notifEmpty: 'まだお知らせはないよ', gotArigatou: '🌱 ありがとうをもらった！',
   },
   en: {
     loading: 'Loading...', mailSent: 'Email sent!', mailSentDesc: 'Tap the link in the email to log in 🌱', tryAnother: 'Try another email',
@@ -106,6 +107,7 @@ const STR = {
     nameSaved: '✨ Name saved!', earned: (a: string) => `🌱 +${a} RSEED earned!`, saveFailed: '⚠️ Save failed: ', userNotFound: 'User not found', notEnough: 'Not enough RSEED', arigatouToast: '💚 Arigatou sent!',
     kujiRange: 'Enter between 0.001 and 10 RSEED', kujiNotEnough: 'Not enough RSEED!', titleUp: (t: string) => `🎉 Rank up! You're now ${t}`, avatarSaved: '✨ Avatar updated!',
     navHome: 'Home', navRank: 'Rank', navKuji: 'Lottery', navNft: 'NFT', navProfile: 'Profile',
+    notifTitle: 'Notifications', notifEmpty: 'No notifications yet', gotArigatou: '🌱 You received arigatou!',
   },
 }
 
@@ -212,6 +214,8 @@ export default function Home() {
   const [fireworks, setFireworks] = useState(false)
   const [avatar, setAvatar] = useState('')
   const [lang, setLang] = useState<Lang>('ja')
+  const [showNotif, setShowNotif] = useState(false)
+  const [notifSeen, setNotifSeen] = useState(0)
   const prevTitleRef = useRef<string | null>(null)
   const t = STR[lang]
   const [loginError, setLoginError] = useState('')
@@ -236,6 +240,8 @@ export default function Home() {
   const nextTitle = getNextTitle(userTitle)
   const nextThreshold = getNextThreshold(userTitle)
   const progress = nextThreshold ? Math.min((arigatouCount / nextThreshold) * 100, 100) : 100
+  const notifications = history.filter(h => h.type === 'arigatou_received')
+  const unreadCount = notifications.filter(h => new Date(h.created_at).getTime() > notifSeen).length
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_, session) => {
@@ -258,7 +264,16 @@ export default function Home() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {})
     }
+    const seen = localStorage.getItem('rseed_notif_seen')
+    if (seen) setNotifSeen(Number(seen))
   }, [])
+
+  const openNotif = () => {
+    setShowNotif(true)
+    const now = Date.now()
+    setNotifSeen(now)
+    localStorage.setItem('rseed_notif_seen', String(now))
+  }
 
   const toggleLang = () => {
     const next: Lang = lang === 'ja' ? 'en' : 'ja'
@@ -479,6 +494,34 @@ export default function Home() {
 
       {fireworks && <Fireworks onDone={() => setFireworks(false)} />}
 
+      {showNotif && (
+        <div onClick={() => setShowNotif(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(45,74,45,0.45)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '70px 16px 16px' }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ ...W, borderRadius: 20, padding: '18px 18px', width: '100%', maxWidth: 360, maxHeight: '75vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ ...textGreen, fontSize: 15, fontWeight: 500 }}>🔔 {t.notifTitle}</div>
+              <button onClick={() => setShowNotif(false)} aria-label="close"
+                style={{ background: 'none', border: 'none', fontSize: 16, cursor: 'pointer', color: '#8ab88a' }}>✕</button>
+            </div>
+            {notifications.length === 0 ? (
+              <div style={{ ...textMuted, fontSize: 13, textAlign: 'center', padding: '24px 0' }}>{t.notifEmpty}</div>
+            ) : (
+              notifications.map((h, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: i < notifications.length - 1 ? '0.5px solid #f0f7ec' : 'none' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#edf7e8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>💚</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ ...textPrimary, fontSize: 13, fontWeight: 500 }}>{t.gotArigatou}</div>
+                    <div style={{ ...textMuted, fontSize: 11, marginTop: 1 }}>{timeAgo(h.created_at, lang)}</div>
+                  </div>
+                  <div style={{ ...textGreen, fontSize: 12, fontFamily: 'monospace', fontWeight: 500 }}>+{h.amount.toFixed(4)}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {showTutorial && (
         <div onClick={closeTutorial}
           style={{ position: 'fixed', inset: 0, background: 'rgba(45,74,45,0.45)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -575,7 +618,13 @@ export default function Home() {
           </button>
           <button onClick={() => setShowTutorial(true)} aria-label="help"
             style={{ background: '#edf7e8', border: '0.5px solid #c8e8bc', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, cursor: 'pointer' }}>❓</button>
-          <div style={{ background: '#edf7e8', border: '0.5px solid #c8e8bc', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>🔔</div>
+          <button onClick={openNotif} aria-label="notifications"
+            style={{ position: 'relative', background: '#edf7e8', border: '0.5px solid #c8e8bc', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, cursor: 'pointer' }}>
+            🔔
+            {unreadCount > 0 && (
+              <span style={{ position: 'absolute', top: -4, right: -4, background: '#e24b4a', color: '#fff', fontSize: 9, fontWeight: 600, minWidth: 16, height: 16, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{unreadCount}</span>
+            )}
+          </button>
         </div>
       </div>
 
