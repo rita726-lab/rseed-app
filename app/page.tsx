@@ -24,6 +24,7 @@ type HistoryItem = {
   created_at: string
   from_username?: string
   to_username?: string
+  message?: string
 }
 
 const TITLE_THRESHOLDS = [
@@ -82,6 +83,7 @@ const STR = {
     navHome: 'ホーム', navRank: 'ランク', navKuji: 'くじ', navNft: 'NFT', navProfile: 'プロフィール',
     notifTitle: 'お知らせ', notifEmpty: 'まだお知らせはないよ', gotArigatou: '🌱 ありがとうをもらった！', navWallet: 'ウォレット',
     share: '📤 シェアする', linkCopied: '📋 シェア文をコピーしたよ！',
+    msgLabel: 'メッセージ（任意・50文字まで）', msgPh: '例：手伝ってくれてありがとう！',
     shareUnlocked: (n: string) => `🌱 RSEEDで「${n}」NFTを手に入れた！感謝が価値になる経済圏 #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 RSEEDで「${n}」NFTを目指してるよ！感謝が価値になる経済圏 #RSEED #RITATASEED`,
   },
@@ -112,6 +114,7 @@ const STR = {
     navHome: 'Home', navRank: 'Rank', navKuji: 'Lottery', navNft: 'NFT', navProfile: 'Profile',
     notifTitle: 'Notifications', notifEmpty: 'No notifications yet', gotArigatou: '🌱 You received arigatou!', navWallet: 'Wallet',
     share: '📤 Share', linkCopied: '📋 Share text copied!',
+    msgLabel: 'Message (optional, up to 50 chars)', msgPh: 'e.g. Thanks for helping me!',
     shareUnlocked: (n: string) => `🌱 I got the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 I'm aiming for the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
   },
@@ -231,6 +234,7 @@ export default function Home() {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [arigatouTarget, setArigatouTarget] = useState('')
   const [arigatouAmount, setArigatouAmount] = useState(1)
+  const [arigatouMessage, setArigatouMessage] = useState('')
   const [sendingArigatou, setSendingArigatou] = useState(false)
   const [toast, setToast] = useState('')
   const [walletFilter, setWalletFilter] = useState<'all' | 'mine' | 'sent' | 'received'>('all')
@@ -441,12 +445,19 @@ export default function Home() {
     if (rseed < cost) { showToast(t.notEnough); setSendingArigatou(false); return }
     await supabase.from('users').update({ rseed: rseed - cost }).eq('id', user.id)
     await supabase.from('users').update({ rseed: target.rseed + arigatouAmount * 0.005, arigatou_count: (target.arigatou_count ?? 0) + 1 }).eq('id', target.id)
-    await supabase.from('history').insert([
-      { user_id: user.id, type: 'arigatou_sent', amount: cost },
-      { user_id: target.id, type: 'arigatou_received', amount: arigatouAmount * 0.005 },
-    ])
+    const msg = arigatouMessage.trim().slice(0, 50)
+    const rows = [
+      { user_id: user.id, type: 'arigatou_sent', amount: cost, message: msg, to_username: arigatouTarget.trim() },
+      { user_id: target.id, type: 'arigatou_received', amount: arigatouAmount * 0.005, message: msg, from_username: username },
+    ]
+    const { error: histErr } = await supabase.from('history').insert(rows)
+    if (histErr) {
+      // message / username 列が未作成でも履歴だけは残す
+      await supabase.from('history').insert(rows.map(({ message, from_username, to_username, ...r }) => r))
+    }
     setRseed(r => r - cost)
     setArigatouTarget('')
+    setArigatouMessage('')
     showToast(t.arigatouToast)
     setSendingArigatou(false)
   }
@@ -541,7 +552,8 @@ export default function Home() {
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: i < notifications.length - 1 ? '0.5px solid #f0f7ec' : 'none' }}>
                   <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#edf7e8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>💚</div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ ...textPrimary, fontSize: 13, fontWeight: 500 }}>{t.gotArigatou}</div>
+                    <div style={{ ...textPrimary, fontSize: 13, fontWeight: 500 }}>{h.from_username ? `${h.from_username} ${t.gotArigatou}` : t.gotArigatou}</div>
+                    {h.message && <div style={{ ...textGreen, fontSize: 12, marginTop: 2, lineHeight: 1.4 }}>「{h.message}」</div>}
                     <div style={{ ...textMuted, fontSize: 11, marginTop: 1 }}>{timeAgo(h.created_at, lang)}</div>
                   </div>
                   <div style={{ ...textGreen, fontSize: 12, fontFamily: 'monospace', fontWeight: 500 }}>+{h.amount.toFixed(4)}</div>
@@ -706,6 +718,7 @@ export default function Home() {
                   <div style={{ ...textPrimary, fontSize: 13 }}>
                     {h.type === 'mine' ? `⛏️ ${t.mining}` : h.type === 'arigatou_sent' ? `💚 ${t.arigatouSent}` : `🌱 ${t.arigatouReceived}`}
                   </div>
+                  {h.message && <div style={{ ...textGreen, fontSize: 11, marginTop: 1 }}>「{h.message}」</div>}
                   <div style={{ ...textMuted, fontSize: 11 }}>{timeAgo(h.created_at, lang)}</div>
                 </div>
                 <div style={{ ...textGreen, fontSize: 12, fontFamily: 'monospace' }}>
@@ -756,6 +769,11 @@ export default function Home() {
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <div style={{ ...textMuted, fontSize: 11, marginBottom: 6 }}>{t.msgLabel}</div>
+              <input type="text" maxLength={50} placeholder={t.msgPh} value={arigatouMessage} onChange={e => setArigatouMessage(e.target.value)}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '0.5px solid #c8e8bc', ...G, ...textPrimary, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ color: '#a0c4a0', fontSize: 11, textAlign: 'center' }}>
               {t.costBalance((arigatouAmount * 0.01).toFixed(3), rseed.toFixed(4))}
