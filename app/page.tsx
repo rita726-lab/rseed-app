@@ -38,19 +38,76 @@ const DISCORD_INVITE = 'https://discord.gg/VkPnNunw'
 const AVATAR_CHOICES = ['🌱', '🌿', '🌸', '🌳', '🍀', '🌻', '🐰', '🐿️', '🦊', '🐸', '🦋', '🐝']
 const NOTE_TUTORIAL_URL = 'https://note.com/rita_sunada' // TODO: チュートリアル記事のURLに差し替え
 
+type Lang = 'ja' | 'en'
+
 const TUTORIAL_STEPS = [
-  { icon: '🌱', title: 'RSEEDってなに？', body: '「ありがとう」に価値を持たせる経済圏。感謝を送り合うほど、みんなのRSEEDが育つよ。' },
-  { icon: '⛏️', title: 'まずはマイニング', body: 'ホーム画面で1時間ごとにRSEEDが貯まる（24時間で満タン）。「受け取る」を押して獲得しよう。' },
-  { icon: '💚', title: 'ありがとうを送る', body: '相手のユーザー名を入れてありがとうを送ると、相手のRSEEDと称号が上がるよ。' },
-  { icon: '🖼️', title: '称号とNFT', body: 'ありがとうを集めるとSEED→SPROUT→BLOOM→LEGENDと称号アップ。新しいNFTも解放される。' },
+  { icon: '🌱', title: { ja: 'RSEEDってなに？', en: 'What is RSEED?' }, body: { ja: '「ありがとう」に価値を持たせる経済圏。感謝を送り合うほど、みんなのRSEEDが育つよ。', en: 'A gratitude economy where "thank you" has value. The more thanks you exchange, the more everyone\'s RSEED grows.' } },
+  { icon: '⛏️', title: { ja: 'まずはマイニング', en: 'Start mining' }, body: { ja: 'ホーム画面で1時間ごとにRSEEDが貯まる（24時間で満タン）。「受け取る」を押して獲得しよう。', en: 'RSEED accumulates every hour on the home screen (full in 24h). Tap "Claim" to collect it.' } },
+  { icon: '💚', title: { ja: 'ありがとうを送る', en: 'Send arigatou' }, body: { ja: '相手のユーザー名を入れてありがとうを送ると、相手のRSEEDと称号が上がるよ。', en: 'Enter someone\'s username and send arigatou to boost their RSEED and rank.' } },
+  { icon: '🖼️', title: { ja: '称号とNFT', en: 'Ranks & NFTs' }, body: { ja: 'ありがとうを集めるとSEED→SPROUT→BLOOM→LEGENDと称号アップ。新しいNFTも解放される。', en: 'Collect arigatou to rank up SEED→SPROUT→BLOOM→LEGEND and unlock new NFTs.' } },
 ]
 
 const NFT_LIST = [
-  { id: 'genesis', name: 'Genesis Seed', sub: '初期コラボ限定', tag: 'LEGEND限定', requiredTitle: 'LEGEND', color: '#edf7e8', icon: '🌳', image: '/nft/genesis.jpg' },
-  { id: 'bloom', name: 'First Bloom', sub: 'ありがとう100回達成', tag: 'BLOOM到達', requiredTitle: 'BLOOM', color: '#e4f4dc', icon: '🌸', image: '/nft/bloom.jpg' },
-  { id: 'warm', name: 'Warm Thanks', sub: '感謝送信50回', tag: 'コミュニティ', requiredTitle: 'SPROUT', color: '#f0f9ea', icon: '🌿', image: '/nft/sprout.jpg' },
-  { id: 'seed', name: 'First Seed', sub: '初回マイニング記念', tag: 'SEED', requiredTitle: 'SEED', color: '#f7fbf4', icon: '🌱', image: '/nft/seed.jpg' },
+  { id: 'genesis', name: 'Genesis Seed', sub: { ja: '初期コラボ限定', en: 'Early collab exclusive' }, tag: { ja: 'LEGEND限定', en: 'LEGEND only' }, requiredTitle: 'LEGEND', color: '#edf7e8', icon: '🌳', image: '/nft/genesis.jpg' },
+  { id: 'bloom', name: 'First Bloom', sub: { ja: 'ありがとう100回達成', en: '100 arigatou reached' }, tag: { ja: 'BLOOM到達', en: 'Reach BLOOM' }, requiredTitle: 'BLOOM', color: '#e4f4dc', icon: '🌸', image: '/nft/bloom.jpg' },
+  { id: 'warm', name: 'Warm Thanks', sub: { ja: '感謝送信50回', en: '50 thanks sent' }, tag: { ja: 'コミュニティ', en: 'Community' }, requiredTitle: 'SPROUT', color: '#f0f9ea', icon: '🌿', image: '/nft/sprout.jpg' },
+  { id: 'seed', name: 'First Seed', sub: { ja: '初回マイニング記念', en: 'First mining memento' }, tag: { ja: 'SEED', en: 'SEED' }, requiredTitle: 'SEED', color: '#f7fbf4', icon: '🌱', image: '/nft/seed.jpg' },
 ]
+
+const STR = {
+  ja: {
+    loading: '読み込み中...', mailSent: 'メールを送りました！', mailSentDesc: '届いたメールのリンクをタップするとログインできるよ🌱', tryAnother: '別のメールで試す',
+    enterEmail: 'メールアドレスを入力するとログインリンクが届くよ', emailPh: 'メールアドレス', sendLink: '🌱 ログインリンクを送る',
+    emailInvalid: 'メールアドレスが正しくありません', sendFailed: '送信に失敗しました：',
+    guideTitle: 'はじめてガイド 🌱', readNote: '📖 noteで詳しく読む', start: '🌱 はじめる',
+    requires: '必要称号：', unlocked: '✅ 解放済み', locked: '🔒 未解放', sendToUnlock: '💚 ありがとうを送って称号を上げる',
+    nftUnlockedDesc: (n: string) => `おめでとう！「${n}」を保有してるよ🌱 称号が上がるたびに新しいNFTが解放される。将来はBNB Chainでミントして本物のNFTにできる予定。`,
+    nftLockedDesc: (t: string) => `このNFTは「${t}」称号で解放されるよ。ありがとうを送り合って称号を上げよう🌱`,
+    accumulated: '溜まってるRSEED', full: '満タン 🌳', elapsed: '経過時間', fullClaim: '⛏️ 満タンだよ！受け取ろう', mineRate: '1時間で +0.001 RSEED・24時間で満タン',
+    receiving: '受け取り中...', claim: (a: string) => `⛏️ ${a} RSEEDを受け取る`, waiting: '⏳ 溜まるのを待ってね', sendArigatou: '💚 ありがとうを送る',
+    recentHistory: 'RECENT HISTORY', noHistory: 'まだ履歴がないよ', mining: 'マイニング', arigatouSent: 'ありがとう送信', arigatouReceived: 'ありがとう受け取り',
+    ranking: 'RANKING', anon: '匿名',
+    sendArigatouTitle: 'SEND ARIGATOU', recipient: '送る相手のユーザー名', amountLabel: '量（1 = 0.01 RSEED消費）',
+    costBalance: (c: string, b: string) => `消費：${c} RSEED　／　残高：${b} RSEED`,
+    nftGallery: 'NFT GALLERY', unlockAt: (t: string) => `${t}で解放`, rankUpUnlock: '🌱 称号を上げてNFTを解放しよう', nftGalleryDesc: 'ありがとうを送るほど称号が上がり、新しいNFTがアンロックされるよ。LEGENDだけのGenesis Seedは限定10枚🌳',
+    walletBalance: 'WALLET BALANCE', totalReceived: '受け取り総額', totalSent: '送った総額', fAll: 'すべて', fReceived: 'もらった', fSent: '送った', fMine: 'マイニング', noHistory2: '履歴がないよ',
+    profile: 'PROFILE', noName: '名前未設定', arigatouTotal: (n: number) => `ありがとう累計 ${n}回`, statBalance: 'RSEED残高', statArigatou: 'ありがとう数', statNft: 'NFT保有',
+    nextRank: (t: string) => `次の称号まで（${t}）`, arigatouUnit: 'ありがとう', usernameCard: '👤 ユーザー名', usernameDesc: 'ランキングやありがとうで表示される名前だよ',
+    namePh: '名前を入力（2〜16文字）', save: '保存', avatarCard: '🎨 アバター', avatarDesc: '好きなアイコンを選んでね', joinDiscord: 'Discordコミュニティに参加', logout: 'ログアウト',
+    kujiHead: 'ARIGATOU KUJI', kujiTitle: 'ありがとうくじ', kujiDesc1: '大当たり 1%（100倍）/ 中当たり 9%（10倍）', kujiDesc2: 'ハズレ 90%（10%返還）', betLabel: '賭けるRSEED（0.001〜10）',
+    balance: (b: string) => `残高：${b} RSEED`, drawing: '🎋 引いてる...', draw: '🎋 くじを引く', bigWin: '大当たり！！！', midWin: '中当たり！', miss: 'ハズレ...', wonAmt: (p: string) => `${p} RSEED 獲得`, again: 'もう一回',
+    nameMin: '2文字以上にしてね', nameMax: '16文字以内にしてね', nameInvalid: '使えない文字が含まれてるよ', nameTaken: 'この名前はもう使われてるよ', nameSaveFail: '保存に失敗しました',
+    nameSaved: '✨ 名前を保存したよ！', earned: (a: string) => `🌱 +${a} RSEED 獲得！`, saveFailed: '⚠️ 保存に失敗：', userNotFound: 'ユーザーが見つかりません', notEnough: 'RSEEDが足りません', arigatouToast: '💚 ありがとうを送ったよ！',
+    kujiRange: '0.001〜10 RSEEDで入力してね', kujiNotEnough: 'RSEEDが足りない！', titleUp: (t: string) => `🎉 称号アップ！「${t}」になったよ`, avatarSaved: '✨ アバターを変更したよ！',
+    navHome: 'ホーム', navRank: 'ランク', navKuji: 'くじ', navNft: 'NFT', navProfile: 'プロフィール',
+  },
+  en: {
+    loading: 'Loading...', mailSent: 'Email sent!', mailSentDesc: 'Tap the link in the email to log in 🌱', tryAnother: 'Try another email',
+    enterEmail: "Enter your email and we'll send a login link", emailPh: 'Email address', sendLink: '🌱 Send login link',
+    emailInvalid: 'Invalid email address', sendFailed: 'Failed to send: ',
+    guideTitle: 'Getting started 🌱', readNote: '📖 Read more on note', start: '🌱 Get started',
+    requires: 'Requires: ', unlocked: '✅ Unlocked', locked: '🔒 Locked', sendToUnlock: '💚 Send arigatou to rank up',
+    nftUnlockedDesc: (n: string) => `Congrats! You own "${n}" 🌱 New NFTs unlock as your rank rises. Soon you'll be able to mint real NFTs on BNB Chain.`,
+    nftLockedDesc: (t: string) => `This NFT unlocks at the "${t}" rank. Exchange arigatou to rank up 🌱`,
+    accumulated: 'Accumulating RSEED', full: 'Full 🌳', elapsed: 'Elapsed', fullClaim: '⛏️ Full! Tap to claim', mineRate: '+0.001 RSEED per hour, full in 24h',
+    receiving: 'Claiming...', claim: (a: string) => `⛏️ Claim ${a} RSEED`, waiting: '⏳ Waiting to fill up', sendArigatou: '💚 Send arigatou',
+    recentHistory: 'RECENT HISTORY', noHistory: 'No history yet', mining: 'Mining', arigatouSent: 'Arigatou sent', arigatouReceived: 'Arigatou received',
+    ranking: 'RANKING', anon: 'Anonymous',
+    sendArigatouTitle: 'SEND ARIGATOU', recipient: "Recipient's username", amountLabel: 'Amount (1 = 0.01 RSEED)',
+    costBalance: (c: string, b: string) => `Cost: ${c} RSEED　/　Balance: ${b} RSEED`,
+    nftGallery: 'NFT GALLERY', unlockAt: (t: string) => `Unlock at ${t}`, rankUpUnlock: '🌱 Rank up to unlock NFTs', nftGalleryDesc: 'The more arigatou you exchange, the higher your rank and the more NFTs unlock. Genesis Seed is LEGEND-only, limited to 10 🌳',
+    walletBalance: 'WALLET BALANCE', totalReceived: 'Total received', totalSent: 'Total sent', fAll: 'All', fReceived: 'Received', fSent: 'Sent', fMine: 'Mining', noHistory2: 'No history',
+    profile: 'PROFILE', noName: 'No name set', arigatouTotal: (n: number) => `${n} arigatou received`, statBalance: 'Balance', statArigatou: 'Arigatou', statNft: 'NFTs',
+    nextRank: (t: string) => `Next rank (${t})`, arigatouUnit: 'arigatou', usernameCard: '👤 Username', usernameDesc: 'Your display name in ranking and arigatou',
+    namePh: 'Enter name (2-16 chars)', save: 'Save', avatarCard: '🎨 Avatar', avatarDesc: 'Pick your favorite icon', joinDiscord: 'Join Discord community', logout: 'Log out',
+    kujiHead: 'ARIGATOU KUJI', kujiTitle: 'Arigatou Lottery', kujiDesc1: 'Jackpot 1% (100x) / Win 9% (10x)', kujiDesc2: 'Miss 90% (10% back)', betLabel: 'Bet RSEED (0.001-10)',
+    balance: (b: string) => `Balance: ${b} RSEED`, drawing: '🎋 Drawing...', draw: '🎋 Draw', bigWin: 'JACKPOT!!!', midWin: 'You win!', miss: 'Miss...', wonAmt: (p: string) => `${p} RSEED won`, again: 'Again',
+    nameMin: 'At least 2 characters', nameMax: '16 characters or fewer', nameInvalid: 'Contains invalid characters', nameTaken: 'This name is already taken', nameSaveFail: 'Failed to save',
+    nameSaved: '✨ Name saved!', earned: (a: string) => `🌱 +${a} RSEED earned!`, saveFailed: '⚠️ Save failed: ', userNotFound: 'User not found', notEnough: 'Not enough RSEED', arigatouToast: '💚 Arigatou sent!',
+    kujiRange: 'Enter between 0.001 and 10 RSEED', kujiNotEnough: 'Not enough RSEED!', titleUp: (t: string) => `🎉 Rank up! You're now ${t}`, avatarSaved: '✨ Avatar updated!',
+    navHome: 'Home', navRank: 'Rank', navKuji: 'Lottery', navNft: 'NFT', navProfile: 'Profile',
+  },
+}
 
 function getTitle(count: number) {
   for (const t of TITLE_THRESHOLDS) if (count >= t.min) return t.name
@@ -72,9 +129,14 @@ function isNftUnlocked(nft: typeof NFT_LIST[0], userTitle: string) {
   return TITLE_ORDER.indexOf(userTitle) >= TITLE_ORDER.indexOf(nft.requiredTitle)
 }
 
-function timeAgo(dateStr: string) {
+function timeAgo(dateStr: string, lang: Lang = 'ja') {
   const diff = Date.now() - new Date(dateStr).getTime()
   const h = Math.floor(diff / 3600000)
+  if (lang === 'en') {
+    if (h < 1) return 'just now'
+    if (h < 24) return `${h}h ago`
+    return `${Math.floor(h / 24)}d ago`
+  }
   if (h < 1) return 'さっき'
   if (h < 24) return `${h}時間前`
   return `${Math.floor(h / 24)}日前`
@@ -149,7 +211,9 @@ export default function Home() {
   const [selectedNft, setSelectedNft] = useState<typeof NFT_LIST[0] | null>(null)
   const [fireworks, setFireworks] = useState(false)
   const [avatar, setAvatar] = useState('')
+  const [lang, setLang] = useState<Lang>('ja')
   const prevTitleRef = useRef<string | null>(null)
+  const t = STR[lang]
   const [loginError, setLoginError] = useState('')
   const [magicSent, setMagicSent] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -189,7 +253,15 @@ export default function Home() {
   useEffect(() => {
     const saved = localStorage.getItem('rseed_last_email')
     if (saved) setEmail(saved)
+    const savedLang = localStorage.getItem('rseed_lang')
+    if (savedLang === 'en' || savedLang === 'ja') setLang(savedLang)
   }, [])
+
+  const toggleLang = () => {
+    const next: Lang = lang === 'ja' ? 'en' : 'ja'
+    setLang(next)
+    localStorage.setItem('rseed_lang', next)
+  }
 
   useEffect(() => {
     if (!user) return
@@ -201,7 +273,7 @@ export default function Home() {
     const prev = prevTitleRef.current
     if (prev && TITLE_ORDER.indexOf(userTitle) > TITLE_ORDER.indexOf(prev)) {
       setFireworks(true)
-      showToast(`🎉 称号アップ！「${userTitle}」になったよ`)
+      showToast(t.titleUp(userTitle))
     }
     prevTitleRef.current = userTitle
   }, [userTitle])
@@ -220,8 +292,8 @@ export default function Home() {
     if (!user) return
     setAvatar(emoji)
     const { error } = await supabase.from('users').upsert({ id: user.id, avatar: emoji }, { onConflict: 'id' })
-    if (error) { showToast('⚠️ 保存に失敗：' + error.message); return }
-    showToast('✨ アバターを変更したよ！')
+    if (error) { showToast(t.saveFailed + error.message); return }
+    showToast(t.avatarSaved)
     await loadRanking()
   }
 
@@ -266,9 +338,9 @@ export default function Home() {
   const handleLogin = async () => {
     setLoginError('')
     const trimmed = email.trim()
-    if (!trimmed.includes('@')) { setLoginError('メールアドレスが正しくありません'); return }
+    if (!trimmed.includes('@')) { setLoginError(t.emailInvalid); return }
     const { error } = await supabase.auth.signInWithOtp({ email: trimmed })
-    if (error) { setLoginError('送信に失敗しました：' + error.message); return }
+    if (error) { setLoginError(t.sendFailed + error.message); return }
     localStorage.setItem('rseed_last_email', trimmed)
     setMagicSent(true)
   }
@@ -277,18 +349,18 @@ export default function Home() {
     if (!user) return
     setNameError('')
     const name = usernameInput.trim()
-    if (name.length < 2) { setNameError('2文字以上にしてね'); return }
-    if (name.length > 16) { setNameError('16文字以内にしてね'); return }
-    if (!/^[a-zA-Z0-9_ぁ-んァ-ヶー一-龠]+$/.test(name)) { setNameError('使えない文字が含まれてるよ'); return }
+    if (name.length < 2) { setNameError(t.nameMin); return }
+    if (name.length > 16) { setNameError(t.nameMax); return }
+    if (!/^[a-zA-Z0-9_ぁ-んァ-ヶー一-龠]+$/.test(name)) { setNameError(t.nameInvalid); return }
     setSavingName(true)
     const { data: existing } = await supabase.from('users').select('id').eq('username', name).neq('id', user.id).maybeSingle()
-    if (existing) { setNameError('この名前はもう使われてるよ'); setSavingName(false); return }
+    if (existing) { setNameError(t.nameTaken); setSavingName(false); return }
     const { error } = await supabase.from('users').update({ username: name }).eq('id', user.id)
     setSavingName(false)
-    if (error) { setNameError('保存に失敗しました'); return }
+    if (error) { setNameError(t.nameSaveFail); return }
     setUsername(name)
     await loadRanking()
-    showToast('✨ 名前を保存したよ！')
+    showToast(t.nameSaved)
   }
 
   const handleMine = async () => {
@@ -304,10 +376,10 @@ export default function Home() {
       setRseed(newBalance)
       setLastMined(now)
       applyAccumulated(now)
-      showToast(`🌱 +${earned.toFixed(3)} RSEED 獲得！`)
+      showToast(t.earned(earned.toFixed(3)))
       await loadRanking()
     } else {
-      showToast('⚠️ 保存に失敗：' + error.message)
+      showToast(t.saveFailed + error.message)
     }
     setMining(false)
   }
@@ -316,9 +388,9 @@ export default function Home() {
     if (!user || !arigatouTarget.trim() || sendingArigatou) return
     setSendingArigatou(true)
     const { data: target } = await supabase.from('users').select('id, rseed, arigatou_count').eq('username', arigatouTarget.trim()).single()
-    if (!target) { showToast('ユーザーが見つかりません'); setSendingArigatou(false); return }
+    if (!target) { showToast(t.userNotFound); setSendingArigatou(false); return }
     const cost = arigatouAmount * 0.01
-    if (rseed < cost) { showToast('RSEEDが足りません'); setSendingArigatou(false); return }
+    if (rseed < cost) { showToast(t.notEnough); setSendingArigatou(false); return }
     await supabase.from('users').update({ rseed: rseed - cost }).eq('id', user.id)
     await supabase.from('users').update({ rseed: target.rseed + arigatouAmount * 0.005, arigatou_count: (target.arigatou_count ?? 0) + 1 }).eq('id', target.id)
     await supabase.from('history').insert([
@@ -327,15 +399,15 @@ export default function Home() {
     ])
     setRseed(r => r - cost)
     setArigatouTarget('')
-    showToast('💚 ありがとうを送ったよ！')
+    showToast(t.arigatouToast)
     setSendingArigatou(false)
   }
 
   const handleKuji = async () => {
     if (!user || kujiPlaying) return
     const bet = parseFloat(kujiAmount)
-    if (isNaN(bet) || bet < 0.001 || bet > 10) { showToast('0.001〜10 RSEEDで入力してね'); return }
-    if (rseed < bet) { showToast('RSEEDが足りない！'); return }
+    if (isNaN(bet) || bet < 0.001 || bet > 10) { showToast(t.kujiRange); return }
+    if (rseed < bet) { showToast(t.kujiNotEnough); return }
     setKujiPlaying(true)
     setKujiResult(null)
     await new Promise(r => setTimeout(r, 1800))
@@ -363,7 +435,7 @@ export default function Home() {
   const textGreen = { color: '#3a7d44' }
   const pill = { background: '#edf7e8', border: '0.5px solid #c8e8bc', borderRadius: 10, padding: '1px 7px', fontSize: 10, ...textGreen, display: 'inline-block' }
 
-  if (loading) return <main style={{ minHeight: '100vh', ...G, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p style={textMuted}>読み込み中...</p></main>
+  if (loading) return <main style={{ minHeight: '100vh', ...G, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><p style={textMuted}>{t.loading}</p></main>
 
   if (!user) return (
     <main style={{ minHeight: '100vh', ...G, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, padding: 20 }}>
@@ -371,23 +443,26 @@ export default function Home() {
         <div style={{ fontSize: 28, fontWeight: 500, letterSpacing: 4, ...textGreen }}>RSEED</div>
         <div style={{ fontSize: 11, ...textMuted, letterSpacing: 2, marginTop: 2 }}>RITATASEED</div>
       </div>
+      <button onClick={toggleLang} style={{ background: '#edf7e8', border: '0.5px solid #c8e8bc', borderRadius: 20, padding: '5px 14px', fontSize: 12, ...textGreen, cursor: 'pointer' }}>
+        {lang === 'ja' ? '🌐 English' : '🌐 日本語'}
+      </button>
       <div style={{ ...W, border: borderGreen, borderRadius: 20, padding: '24px 20px', width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 12 }}>
         {magicSent ? (
           <>
             <div style={{ textAlign: 'center', fontSize: 32 }}>📬</div>
-            <p style={{ textAlign: 'center', ...textGreen, fontWeight: 500, fontSize: 15 }}>メールを送りました！</p>
-            <p style={{ textAlign: 'center', ...textMuted, fontSize: 13, lineHeight: 1.6 }}>届いたメールのリンクをタップするとログインできるよ🌱</p>
+            <p style={{ textAlign: 'center', ...textGreen, fontWeight: 500, fontSize: 15 }}>{t.mailSent}</p>
+            <p style={{ textAlign: 'center', ...textMuted, fontSize: 13, lineHeight: 1.6 }}>{t.mailSentDesc}</p>
             <button onClick={() => { setMagicSent(false); setEmail('') }} style={{ padding: '10px 0', borderRadius: 30, background: 'transparent', color: '#3a7d44', fontWeight: 500, fontSize: 13, border: '0.5px solid #c8e8bc', cursor: 'pointer' }}>
-              別のメールで試す
+              {t.tryAnother}
             </button>
           </>
         ) : (
           <>
-            <p style={{ textAlign: 'center', ...textMuted, fontSize: 13 }}>メールアドレスを入力するとログインリンクが届くよ</p>
-            <input type="email" placeholder="メールアドレス" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            <p style={{ textAlign: 'center', ...textMuted, fontSize: 13 }}>{t.enterEmail}</p>
+            <input type="email" placeholder={t.emailPh} value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()}
               style={{ padding: '12px 16px', borderRadius: 12, border: '0.5px solid #c8e8bc', ...G, ...textPrimary, fontSize: 14, outline: 'none', width: '100%' }} />
             <button onClick={handleLogin} style={{ padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer' }}>
-              🌱 ログインリンクを送る
+              {t.sendLink}
             </button>
             {loginError && <p style={{ color: '#e24b4a', fontSize: 12, textAlign: 'center' }}>{loginError}</p>}
           </>
@@ -408,26 +483,26 @@ export default function Home() {
             style={{ ...W, borderRadius: 24, padding: '24px 22px', width: '100%', maxWidth: 360, maxHeight: '85vh', overflowY: 'auto' }}>
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: 28, fontWeight: 500, letterSpacing: 3, ...textGreen }}>RSEED</div>
-              <div style={{ ...textMuted, fontSize: 12, marginTop: 2 }}>はじめてガイド 🌱</div>
+              <div style={{ ...textMuted, fontSize: 12, marginTop: 2 }}>{t.guideTitle}</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {TUTORIAL_STEPS.map((s, i) => (
                 <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                   <div style={{ fontSize: 24, flexShrink: 0, width: 38, height: 38, borderRadius: '50%', background: '#edf7e8', border: '0.5px solid #c8e8bc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{s.icon}</div>
                   <div>
-                    <div style={{ ...textPrimary, fontSize: 14, fontWeight: 500 }}>{s.title}</div>
-                    <div style={{ ...textMuted, fontSize: 12, marginTop: 2, lineHeight: 1.6 }}>{s.body}</div>
+                    <div style={{ ...textPrimary, fontSize: 14, fontWeight: 500 }}>{s.title[lang]}</div>
+                    <div style={{ ...textMuted, fontSize: 12, marginTop: 2, lineHeight: 1.6 }}>{s.body[lang]}</div>
                   </div>
                 </div>
               ))}
             </div>
             <a href={NOTE_TUTORIAL_URL} target="_blank" rel="noopener noreferrer"
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 18, padding: '12px 0', borderRadius: 30, background: '#edf7e8', ...textGreen, fontSize: 13, border: '0.5px solid #b8dda8', textDecoration: 'none', boxSizing: 'border-box' }}>
-              📖 noteで詳しく読む
+              {t.readNote}
             </a>
             <button onClick={closeTutorial}
               style={{ width: '100%', marginTop: 10, padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer' }}>
-              🌱 はじめる
+              {t.start}
             </button>
           </div>
         </div>
@@ -442,7 +517,7 @@ export default function Home() {
               style={{ ...W, borderRadius: 24, width: '100%', maxWidth: 360, maxHeight: '88vh', overflowY: 'auto', overflowX: 'hidden' }}>
               <div style={{ position: 'relative' }}>
                 <img src={selectedNft.image} alt={selectedNft.name} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', display: 'block', filter: unlocked ? 'none' : 'grayscale(0.7) blur(3px)' }} />
-                <button onClick={() => setSelectedNft(null)} aria-label="閉じる"
+                <button onClick={() => setSelectedNft(null)} aria-label="close"
                   style={{ position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: 'none', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                 {!unlocked && (
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44 }}>🔒</div>
@@ -453,26 +528,24 @@ export default function Home() {
                   <span style={{ fontSize: 22 }}>{selectedNft.icon}</span>
                   <span style={{ ...textPrimary, fontSize: 18, fontWeight: 500 }}>{selectedNft.name}</span>
                 </div>
-                <div style={{ ...textMuted, fontSize: 13, marginTop: 4 }}>{selectedNft.sub}</div>
+                <div style={{ ...textMuted, fontSize: 13, marginTop: 4 }}>{selectedNft.sub[lang]}</div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-                  <span style={{ ...pill, fontSize: 11 }}>{selectedNft.tag}</span>
-                  <span style={{ ...pill, fontSize: 11 }}>必要称号：{selectedNft.requiredTitle}</span>
+                  <span style={{ ...pill, fontSize: 11 }}>{selectedNft.tag[lang]}</span>
+                  <span style={{ ...pill, fontSize: 11 }}>{t.requires}{selectedNft.requiredTitle}</span>
                   <span style={{ ...pill, fontSize: 11, background: unlocked ? '#edf7e8' : '#fff0f0', color: unlocked ? '#3a7d44' : '#c47', border: unlocked ? '0.5px solid #c8e8bc' : '0.5px solid #f0c8c8' }}>
-                    {unlocked ? '✅ 解放済み' : '🔒 未解放'}
+                    {unlocked ? t.unlocked : t.locked}
                   </span>
                 </div>
                 <div style={{ marginTop: 14, padding: '12px 14px', background: '#f7fbf4', borderRadius: 12, border: '0.5px solid #e0f0d8' }}>
                   <div style={{ ...textGreen, fontSize: 11, fontWeight: 500, marginBottom: 4 }}>RSEED Collection</div>
                   <div style={{ ...textMuted, fontSize: 12, lineHeight: 1.7 }}>
-                    {unlocked
-                      ? `おめでとう！「${selectedNft.name}」を保有してるよ🌱 称号が上がるたびに新しいNFTが解放される。将来はBNB Chainでミントして本物のNFTにできる予定。`
-                      : `このNFTは「${selectedNft.requiredTitle}」称号で解放されるよ。ありがとうを送り合って称号を上げよう🌱`}
+                    {unlocked ? t.nftUnlockedDesc(selectedNft.name) : t.nftLockedDesc(selectedNft.requiredTitle)}
                   </div>
                 </div>
                 {!unlocked && (
                   <button onClick={() => { setSelectedNft(null); setTab('arigatou') }}
                     style={{ width: '100%', marginTop: 12, padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer' }}>
-                    💚 ありがとうを送って称号を上げる
+                    {t.sendToUnlock}
                   </button>
                 )}
               </div>
@@ -492,8 +565,12 @@ export default function Home() {
           <div style={{ fontSize: 20, fontWeight: 500, letterSpacing: 4, ...textGreen }}>RSEED</div>
           <div style={{ fontSize: 10, ...textMuted, letterSpacing: 1 }}>RITATASEED</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setShowTutorial(true)} aria-label="使い方"
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button onClick={toggleLang} aria-label="language"
+            style={{ background: '#edf7e8', border: '0.5px solid #c8e8bc', borderRadius: 16, height: 32, padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, ...textGreen, cursor: 'pointer' }}>
+            {lang === 'ja' ? 'EN' : 'JA'}
+          </button>
+          <button onClick={() => setShowTutorial(true)} aria-label="help"
             style={{ background: '#edf7e8', border: '0.5px solid #c8e8bc', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, cursor: 'pointer' }}>❓</button>
           <div style={{ background: '#edf7e8', border: '0.5px solid #c8e8bc', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>🔔</div>
         </div>
@@ -510,11 +587,11 @@ export default function Home() {
             <div style={{ background: '#f0f9ea', border: '0.5px solid #c8e8bc', borderRadius: 14, padding: '12px 16px', marginTop: 14, position: 'relative', zIndex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ ...textMuted, fontSize: 11 }}>溜まってるRSEED</div>
+                  <div style={{ ...textMuted, fontSize: 11 }}>{t.accumulated}</div>
                   <div style={{ color: '#2d6636', fontSize: 22, fontWeight: 500, marginTop: 2 }}>+{accumulatedRseed.toFixed(3)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ ...textMuted, fontSize: 11 }}>{accumulatedFrac >= 1 ? '満タン 🌳' : '経過時間'}</div>
+                  <div style={{ ...textMuted, fontSize: 11 }}>{accumulatedFrac >= 1 ? t.full : t.elapsed}</div>
                   <div style={{ ...textGreen, fontSize: 22, fontWeight: 500, marginTop: 2 }}>{accumulatedHours}h / 24h</div>
                 </div>
               </div>
@@ -522,28 +599,28 @@ export default function Home() {
                 <div style={{ background: accumulatedFrac >= 1 ? '#f0a830' : '#3a7d44', height: '100%', width: `${Math.min(accumulatedFrac * 100, 100)}%`, borderRadius: 4, transition: 'width 1s linear' }} />
               </div>
               <div style={{ ...textMuted, fontSize: 10, marginTop: 6, textAlign: 'center' }}>
-                {accumulatedFrac >= 1 ? '⛏️ 満タンだよ！受け取ろう' : '1時間で +0.001 RSEED・24時間で満タン'}
+                {accumulatedFrac >= 1 ? t.fullClaim : t.mineRate}
               </div>
             </div>
             <button onClick={handleMine} disabled={mining || accumulatedRseed <= 0}
               style={{ display: 'block', width: '100%', marginTop: 10, padding: '14px 0', borderRadius: 30, background: accumulatedRseed > 0 ? '#3a7d44' : '#c8e8bc', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: accumulatedRseed > 0 ? 'pointer' : 'default', position: 'relative', zIndex: 1 }}>
-              {mining ? '受け取り中...' : accumulatedRseed > 0 ? `⛏️ ${accumulatedRseed.toFixed(3)} RSEEDを受け取る` : '⏳ 溜まるのを待ってね'}
+              {mining ? t.receiving : accumulatedRseed > 0 ? t.claim(accumulatedRseed.toFixed(3)) : t.waiting}
             </button>
             <button onClick={() => setTab('arigatou')}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', marginTop: 10, padding: '10px 0', borderRadius: 30, background: '#edf7e8', ...textGreen, fontSize: 13, border: '0.5px solid #b8dda8', cursor: 'pointer', position: 'relative', zIndex: 1 }}>
-              💚 ありがとうを送る
+              {t.sendArigatou}
             </button>
           </div>
           <div style={{ padding: '14px 16px', ...G, borderBottom: '0.5px solid #e8f4e0' }}>
-            <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 10, fontWeight: 500 }}>RECENT HISTORY</div>
-            {history.length === 0 && <div style={{ color: '#b8dda8', fontSize: 13 }}>まだ履歴がないよ</div>}
+            <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 10, fontWeight: 500 }}>{t.recentHistory}</div>
+            {history.length === 0 && <div style={{ color: '#b8dda8', fontSize: 13 }}>{t.noHistory}</div>}
             {history.map((h, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < history.length - 1 ? '0.5px solid #e8f4e0' : 'none' }}>
                 <div>
                   <div style={{ ...textPrimary, fontSize: 13 }}>
-                    {h.type === 'mine' ? '⛏️ マイニング' : h.type === 'arigatou_sent' ? '💚 ありがとう送信' : '🌱 ありがとう受け取り'}
+                    {h.type === 'mine' ? `⛏️ ${t.mining}` : h.type === 'arigatou_sent' ? `💚 ${t.arigatouSent}` : `🌱 ${t.arigatouReceived}`}
                   </div>
-                  <div style={{ ...textMuted, fontSize: 11 }}>{timeAgo(h.created_at)}</div>
+                  <div style={{ ...textMuted, fontSize: 11 }}>{timeAgo(h.created_at, lang)}</div>
                 </div>
                 <div style={{ ...textGreen, fontSize: 12, fontFamily: 'monospace' }}>
                   {h.type === 'arigatou_sent' ? '-' : '+'}{h.amount.toFixed(4)} RSEED
@@ -565,7 +642,7 @@ export default function Home() {
                 {u.avatar || (u.username ?? 'U').slice(0, 2).toUpperCase()}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ ...textPrimary, fontSize: 13 }}>{u.username ?? '匿名'}</div>
+                <div style={{ ...textPrimary, fontSize: 13 }}>{u.username ?? t.anon}</div>
                 <div style={pill}>{getTitle(u.arigatou_count ?? 0)}</div>
               </div>
               <div style={{ ...textGreen, fontSize: 12, fontFamily: 'monospace' }}>{u.rseed.toFixed(3)}</div>
@@ -576,15 +653,15 @@ export default function Home() {
 
       {tab === 'arigatou' && (
         <div style={{ padding: '20px 16px' }}>
-          <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 16, fontWeight: 500 }}>SEND ARIGATOU</div>
+          <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 16, fontWeight: 500 }}>{t.sendArigatouTitle}</div>
           <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <div style={{ ...textMuted, fontSize: 11, marginBottom: 6 }}>送る相手のユーザー名</div>
+              <div style={{ ...textMuted, fontSize: 11, marginBottom: 6 }}>{t.recipient}</div>
               <input type="text" placeholder="username" value={arigatouTarget} onChange={e => setArigatouTarget(e.target.value)}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '0.5px solid #c8e8bc', ...G, ...textPrimary, fontSize: 14, outline: 'none' }} />
             </div>
             <div>
-              <div style={{ ...textMuted, fontSize: 11, marginBottom: 6 }}>量（1 = 0.01 RSEED消費）</div>
+              <div style={{ ...textMuted, fontSize: 11, marginBottom: 6 }}>{t.amountLabel}</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {[1, 5, 10, 50].map(n => (
                   <button key={n} onClick={() => setArigatouAmount(n)}
@@ -595,11 +672,11 @@ export default function Home() {
               </div>
             </div>
             <div style={{ color: '#a0c4a0', fontSize: 11, textAlign: 'center' }}>
-              消費：{(arigatouAmount * 0.01).toFixed(3)} RSEED　／　残高：{rseed.toFixed(4)} RSEED
+              {t.costBalance((arigatouAmount * 0.01).toFixed(3), rseed.toFixed(4))}
             </div>
             <button onClick={handleSendArigatou} disabled={sendingArigatou || !arigatouTarget.trim()}
               style={{ padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer', opacity: sendingArigatou || !arigatouTarget.trim() ? 0.5 : 1 }}>
-              💚 ありがとうを送る
+              {t.sendArigatou}
             </button>
           </div>
         </div>
@@ -607,7 +684,7 @@ export default function Home() {
 
       {tab === 'nft' && (
         <div style={{ padding: '14px 16px' }}>
-          <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 12, fontWeight: 500 }}>NFT GALLERY</div>
+          <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 12, fontWeight: 500 }}>{t.nftGallery}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {NFT_LIST.map(nft => {
               const unlocked = isNftUnlocked(nft, userTitle)
@@ -622,17 +699,17 @@ export default function Home() {
                   </div>
                   <div style={{ padding: '8px 10px' }}>
                     <div style={{ ...textPrimary, fontSize: 12, fontWeight: 500 }}>{nft.name}</div>
-                    <div style={{ ...textMuted, fontSize: 10, marginTop: 1 }}>{nft.sub}</div>
-                    <div style={{ ...pill, marginTop: 5 }}>{nft.tag}</div>
-                    {!unlocked && <div style={{ color: '#b8dda8', fontSize: 10, marginTop: 4 }}>{nft.requiredTitle}で解放</div>}
+                    <div style={{ ...textMuted, fontSize: 10, marginTop: 1 }}>{nft.sub[lang]}</div>
+                    <div style={{ ...pill, marginTop: 5 }}>{nft.tag[lang]}</div>
+                    {!unlocked && <div style={{ color: '#b8dda8', fontSize: 10, marginTop: 4 }}>{t.unlockAt(nft.requiredTitle)}</div>}
                   </div>
                 </div>
               )
             })}
           </div>
           <div style={{ marginTop: 14, padding: '12px 14px', background: '#edf7e8', borderRadius: 12, border: '0.5px solid #c8e8bc' }}>
-            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500 }}>🌱 称号を上げてNFTを解放しよう</div>
-            <div style={{ ...textMuted, fontSize: 11, marginTop: 4, lineHeight: 1.6 }}>ありがとうを送るほど称号が上がり、新しいNFTがアンロックされるよ。LEGENDだけのGenesis Seedは限定10枚🌳</div>
+            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500 }}>{t.rankUpUnlock}</div>
+            <div style={{ ...textMuted, fontSize: 11, marginTop: 4, lineHeight: 1.6 }}>{t.nftGalleryDesc}</div>
           </div>
         </div>
       )}
@@ -640,28 +717,28 @@ export default function Home() {
       {tab === 'wallet' && (
         <div>
           <div style={{ ...W, padding: '20px 20px 16px', borderBottom: '0.5px solid #e0f0d8', textAlign: 'center' }}>
-            <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 6 }}>WALLET BALANCE</div>
+            <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 6 }}>{t.walletBalance}</div>
             <div style={{ fontSize: 44, fontWeight: 500, color: '#2d6636' }}>{rseed.toFixed(4)}</div>
             <div style={{ ...textMuted, fontSize: 12, marginTop: 2 }}>RSEED</div>
             <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
               <div style={{ flex: 1, background: '#f0f9ea', border: '0.5px solid #d4eacc', borderRadius: 12, padding: '10px 12px' }}>
-                <div style={{ ...textMuted, fontSize: 10, marginBottom: 3 }}>受け取り総額</div>
+                <div style={{ ...textMuted, fontSize: 10, marginBottom: 3 }}>{t.totalReceived}</div>
                 <div style={{ color: '#2d6636', fontSize: 16, fontWeight: 500 }}>+{history.filter(h => h.type !== 'arigatou_sent').reduce((s, h) => s + h.amount, 0).toFixed(3)}</div>
                 <div style={{ color: '#a0c4a0', fontSize: 10 }}>RSEED</div>
               </div>
               <div style={{ flex: 1, background: '#f0f9ea', border: '0.5px solid #d4eacc', borderRadius: 12, padding: '10px 12px' }}>
-                <div style={{ ...textMuted, fontSize: 10, marginBottom: 3 }}>送った総額</div>
+                <div style={{ ...textMuted, fontSize: 10, marginBottom: 3 }}>{t.totalSent}</div>
                 <div style={{ color: '#e24b4a', fontSize: 16, fontWeight: 500 }}>-{history.filter(h => h.type === 'arigatou_sent').reduce((s, h) => s + h.amount, 0).toFixed(3)}</div>
                 <div style={{ color: '#a0c4a0', fontSize: 10 }}>RSEED</div>
               </div>
             </div>
             <button onClick={() => setTab('arigatou')}
               style={{ display: 'block', width: '100%', marginTop: 12, padding: '13px 0', borderRadius: 30, background: '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer' }}>
-              💚 ありがとうを送る
+              {t.sendArigatou}
             </button>
           </div>
           <div style={{ display: 'flex', gap: 6, padding: '10px 14px', background: '#f7fbf4', borderBottom: '0.5px solid #e8f4e0' }}>
-            {([['all', 'すべて'], ['received', 'もらった'], ['sent', '送った'], ['mine', 'マイニング']] as const).map(([val, label]) => (
+            {([['all', t.fAll], ['received', t.fReceived], ['sent', t.fSent], ['mine', t.fMine]] as const).map(([val, label]) => (
               <button key={val} onClick={() => setWalletFilter(val)}
                 style={{ flex: 1, padding: '6px 0', borderRadius: 20, fontSize: 10, border: '0.5px solid #c8e8bc', cursor: 'pointer', background: walletFilter === val ? '#3a7d44' : '#fff', color: walletFilter === val ? '#fff' : '#8ab88a' }}>
                 {label}
@@ -681,9 +758,9 @@ export default function Home() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ ...textPrimary, fontSize: 13, fontWeight: 500 }}>
-                    {h.type === 'mine' ? 'マイニング' : h.type === 'arigatou_sent' ? 'ありがとう送信' : 'ありがとう受け取り'}
+                    {h.type === 'mine' ? t.mining : h.type === 'arigatou_sent' ? t.arigatouSent : t.arigatouReceived}
                   </div>
-                  <div style={{ color: '#a0c4a0', fontSize: 10, marginTop: 1 }}>{timeAgo(h.created_at)}</div>
+                  <div style={{ color: '#a0c4a0', fontSize: 10, marginTop: 1 }}>{timeAgo(h.created_at, lang)}</div>
                 </div>
                 <div style={{ fontSize: 13, fontFamily: 'monospace', fontWeight: 500, color: h.type === 'arigatou_sent' ? '#e24b4a' : '#3a7d44' }}>
                   {h.type === 'arigatou_sent' ? '-' : '+'}{h.amount.toFixed(3)}
@@ -691,7 +768,7 @@ export default function Home() {
               </div>
             ))}
             {history.filter(h => walletFilter === 'all' || (walletFilter === 'mine' && h.type === 'mine') || (walletFilter === 'sent' && h.type === 'arigatou_sent') || (walletFilter === 'received' && h.type === 'arigatou_received')).length === 0 && (
-              <div style={{ padding: '20px 16px', ...textMuted, fontSize: 13 }}>履歴がないよ</div>
+              <div style={{ padding: '20px 16px', ...textMuted, fontSize: 13 }}>{t.noHistory2}</div>
             )}
           </div>
         </div>
@@ -699,23 +776,23 @@ export default function Home() {
 
       {tab === 'profile' && (
         <div style={{ padding: '14px 16px' }}>
-          <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 12, fontWeight: 500 }}>PROFILE</div>
+          <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 12, fontWeight: 500 }}>{t.profile}</div>
           <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '18px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
               <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#edf7e8', border: '0.5px solid #b8dda8', display: 'flex', alignItems: 'center', justifyContent: 'center', ...textGreen, fontSize: avatar ? 24 : 14, fontWeight: 500 }}>
                 {avatar || (username || user.email || 'U').slice(0, 2).toUpperCase()}
               </div>
               <div>
-                <div style={{ ...textPrimary, fontSize: 14, fontWeight: 500 }}>{username || '名前未設定'}</div>
-                <div style={{ ...textGreen, fontSize: 11, marginTop: 2 }}>{userTitle} ✦ ありがとう累計 {arigatouCount}回</div>
+                <div style={{ ...textPrimary, fontSize: 14, fontWeight: 500 }}>{username || t.noName}</div>
+                <div style={{ ...textGreen, fontSize: 11, marginTop: 2 }}>{userTitle} ✦ {t.arigatouTotal(arigatouCount)}</div>
               </div>
             </div>
             <div style={{ borderTop: '0.5px solid #e8f4e0', paddingTop: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: 16 }}>
                 {[
-                  { label: 'RSEED残高', value: rseed.toFixed(3) },
-                  { label: 'ありがとう数', value: arigatouCount },
-                  { label: 'NFT保有', value: NFT_LIST.filter(n => isNftUnlocked(n, userTitle)).length },
+                  { label: t.statBalance, value: rseed.toFixed(3) },
+                  { label: t.statArigatou, value: arigatouCount },
+                  { label: t.statNft, value: NFT_LIST.filter(n => isNftUnlocked(n, userTitle)).length },
                 ].map(s => (
                   <div key={s.label} style={{ textAlign: 'center' }}>
                     <div style={{ color: '#2d6636', fontSize: 22, fontWeight: 500 }}>{s.value}</div>
@@ -725,12 +802,12 @@ export default function Home() {
               </div>
               {nextTitle && (
                 <>
-                  <div style={{ color: '#a0c4a0', fontSize: 11, marginBottom: 5 }}>次の称号まで（{nextTitle}）</div>
+                  <div style={{ color: '#a0c4a0', fontSize: 11, marginBottom: 5 }}>{t.nextRank(nextTitle)}</div>
                   <div style={{ background: '#e8f4e0', borderRadius: 4, height: 6, overflow: 'hidden' }}>
                     <div style={{ background: '#3a7d44', height: '100%', width: `${progress}%`, borderRadius: 4 }} />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
-                    <span style={{ color: '#a0c4a0', fontSize: 10 }}>{arigatouCount} / {nextThreshold} ありがとう</span>
+                    <span style={{ color: '#a0c4a0', fontSize: 10 }}>{arigatouCount} / {nextThreshold} {t.arigatouUnit}</span>
                     <span style={{ color: '#a0c4a0', fontSize: 10 }}>{Math.round(progress)}%</span>
                   </div>
                 </>
@@ -738,21 +815,21 @@ export default function Home() {
             </div>
           </div>
           <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '16px', marginTop: 14 }}>
-            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 4 }}>👤 ユーザー名</div>
-            <div style={{ ...textMuted, fontSize: 10, marginBottom: 10 }}>ランキングやありがとうで表示される名前だよ</div>
+            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 4 }}>{t.usernameCard}</div>
+            <div style={{ ...textMuted, fontSize: 10, marginBottom: 10 }}>{t.usernameDesc}</div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <input type="text" placeholder="名前を入力（2〜16文字）" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveUsername()}
+              <input type="text" placeholder={t.namePh} value={usernameInput} onChange={e => setUsernameInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveUsername()}
                 style={{ flex: 1, padding: '11px 14px', borderRadius: 12, border: '0.5px solid #c8e8bc', background: '#f7fbf4', color: '#2d4a2d', fontSize: 14, outline: 'none', minWidth: 0 }} />
               <button onClick={handleSaveUsername} disabled={savingName || usernameInput.trim() === username}
                 style={{ padding: '0 18px', borderRadius: 12, background: (savingName || usernameInput.trim() === username) ? '#c8e8bc' : '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 13, border: 'none', cursor: (savingName || usernameInput.trim() === username) ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>
-                {savingName ? '...' : '保存'}
+                {savingName ? '...' : t.save}
               </button>
             </div>
             {nameError && <p style={{ color: '#e24b4a', fontSize: 11, marginTop: 8 }}>{nameError}</p>}
           </div>
           <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '16px', marginTop: 14 }}>
-            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 4 }}>🎨 アバター</div>
-            <div style={{ ...textMuted, fontSize: 10, marginBottom: 10 }}>好きなアイコンを選んでね</div>
+            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 4 }}>{t.avatarCard}</div>
+            <div style={{ ...textMuted, fontSize: 10, marginBottom: 10 }}>{t.avatarDesc}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {AVATAR_CHOICES.map(emoji => (
                 <button key={emoji} onClick={() => handlePickAvatar(emoji)}
@@ -764,36 +841,36 @@ export default function Home() {
           </div>
           <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', marginTop: 14, padding: '13px 0', borderRadius: 30, background: '#5865F2', color: '#fff', fontWeight: 500, fontSize: 14, border: 'none', cursor: 'pointer', textDecoration: 'none', boxSizing: 'border-box' }}>
-            <span style={{ fontSize: 17 }}>💬</span> Discordコミュニティに参加
+            <span style={{ fontSize: 17 }}>💬</span> {t.joinDiscord}
           </a>
           <button onClick={() => supabase.auth.signOut()}
             style={{ width: '100%', marginTop: 14, padding: '12px 0', borderRadius: 30, ...W, ...textMuted, border: '0.5px solid #c8e8bc', fontSize: 13, cursor: 'pointer' }}>
-            ログアウト
+            {t.logout}
           </button>
         </div>
       )}
 
       {tab === 'kuji' && (
         <div style={{ padding: '24px 16px' }}>
-          <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 20, fontWeight: 500 }}>ARIGATOU KUJI</div>
+          <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 20, fontWeight: 500 }}>{t.kujiHead}</div>
           <div style={{ ...W, border: borderGreen, borderRadius: 20, padding: '24px 20px', textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 8 }}>🎋</div>
-            <div style={{ ...textPrimary, fontSize: 14, fontWeight: 500, marginBottom: 4 }}>ありがとうくじ</div>
+            <div style={{ ...textPrimary, fontSize: 14, fontWeight: 500, marginBottom: 4 }}>{t.kujiTitle}</div>
             <div style={{ ...textMuted, fontSize: 11, marginBottom: 20, lineHeight: 1.6 }}>
-              大当たり 1%（100倍）/ 中当たり 9%（10倍）<br/>ハズレ 90%（10%返還）
+              {t.kujiDesc1}<br/>{t.kujiDesc2}
             </div>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ ...textMuted, fontSize: 11, marginBottom: 8 }}>賭けるRSEED（0.001〜10）</div>
+              <div style={{ ...textMuted, fontSize: 11, marginBottom: 8 }}>{t.betLabel}</div>
               <input
                 type="number" value={kujiAmount} onChange={e => setKujiAmount(e.target.value)}
                 min="0.001" max="10" step="0.001"
                 style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '0.5px solid #c8e8bc', background: '#f7fbf4', color: '#2d4a2d', fontSize: 18, textAlign: 'center', outline: 'none', fontWeight: 500 }}
               />
-              <div style={{ ...textMuted, fontSize: 11, marginTop: 6 }}>残高：{rseed.toFixed(4)} RSEED</div>
+              <div style={{ ...textMuted, fontSize: 11, marginTop: 6 }}>{t.balance(rseed.toFixed(4))}</div>
             </div>
             <button onClick={handleKuji} disabled={kujiPlaying}
               style={{ width: '100%', padding: '16px 0', borderRadius: 30, background: kujiPlaying ? '#c8e8bc' : '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 16, border: 'none', cursor: kujiPlaying ? 'default' : 'pointer' }}>
-              {kujiPlaying ? '🎋 引いてる...' : '🎋 くじを引く'}
+              {kujiPlaying ? t.drawing : t.draw}
             </button>
           </div>
 
@@ -803,17 +880,17 @@ export default function Home() {
                 {kujiResult.type === 'big' ? '🎉' : kujiResult.type === 'mid' ? '✨' : '🌱'}
               </div>
               <div style={{ fontSize: 18, fontWeight: 500, color: kujiResult.type === 'big' ? '#b8860b' : kujiResult.type === 'mid' ? '#3a7d44' : '#8ab88a', marginBottom: 4 }}>
-                {kujiResult.type === 'big' ? '大当たり！！！' : kujiResult.type === 'mid' ? '中当たり！' : 'ハズレ...'}
+                {kujiResult.type === 'big' ? t.bigWin : kujiResult.type === 'mid' ? t.midWin : t.miss}
               </div>
               <div style={{ color: '#2d6636', fontSize: 28, fontWeight: 500 }}>
                 {kujiResult.payout >= kujiResult.bet ? '+' : ''}{(kujiResult.payout - kujiResult.bet).toFixed(4)} RSEED
               </div>
               <div style={{ ...textMuted, fontSize: 11, marginTop: 4 }}>
-                {kujiResult.payout.toFixed(4)} RSEED 獲得
+                {t.wonAmt(kujiResult.payout.toFixed(4))}
               </div>
               <button onClick={() => setKujiResult(null)}
                 style={{ marginTop: 14, padding: '10px 28px', borderRadius: 30, background: '#edf7e8', color: '#3a7d44', border: '0.5px solid #b8dda8', fontSize: 13, cursor: 'pointer' }}>
-                もう一回
+                {t.again}
               </button>
             </div>
           )}
@@ -822,11 +899,11 @@ export default function Home() {
 
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 420, ...W, borderTop: '0.5px solid #e0f0d8', padding: '10px 0 20px', display: 'flex', justifyContent: 'space-around', zIndex: 50 }}>
         {([
-          { id: 'home', icon: '🏠', label: 'ホーム' },
-          { id: 'ranking', icon: '🏆', label: 'ランク' },
-          { id: 'kuji', icon: '🎋', label: 'くじ' },
-          { id: 'nft', icon: '🖼️', label: 'NFT' },
-          { id: 'profile', icon: '👤', label: 'プロフィール' },
+          { id: 'home', icon: '🏠', label: t.navHome },
+          { id: 'ranking', icon: '🏆', label: t.navRank },
+          { id: 'kuji', icon: '🎋', label: t.navKuji },
+          { id: 'nft', icon: '🖼️', label: t.navNft },
+          { id: 'profile', icon: '👤', label: t.navProfile },
         ] as { id: Tab; icon: string; label: string }[]).map(({ id, icon, label }) => (
           <button key={id} onClick={() => setTab(id)}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', cursor: 'pointer', color: tab === id ? '#3a7d44' : '#b8dda8', fontSize: 10 }}>
