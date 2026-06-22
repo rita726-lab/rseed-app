@@ -39,6 +39,8 @@ const DISCORD_INVITE = 'https://discord.gg/VkPnNunw'
 const AVATAR_CHOICES = ['🌱', '🌿', '🌸', '🌳', '🍀', '🌻', '🐰', '🐿️', '🦊', '🐸', '🦋', '🐝']
 const DAILY_AMOUNT = 0.005
 const MAX_SUPPLY = 20_000_000
+const TREASURY_ID = '00000000-0000-0000-0000-000000000000'
+const DISTRIBUTE_THRESHOLD = 10
 
 type BadgeStats = { rseed: number; arigatouCount: number; nftCount: number; mined: boolean }
 const BADGES = [
@@ -100,6 +102,7 @@ const STR = {
     dailyGot: (a: string) => `🎁 デイリーボーナス +${a} RSEED！`, daily: 'デイリーボーナス',
     badgesTitle: '🏅 実績バッジ', badgeLocked: '未獲得',
     totalSupply: '🌍 みんなで育てたRITATASEED', supplyNote: '上限2,000万枚に到達したら新規発行は止まるよ。みんなで少しずつ育てていこう🌱',
+    poolTitle: '🤝 みんなのプール', poolNote: (n: string) => `使われたRSEEDは燃えずにここへ集まるよ。${n}枚たまったら全員に分配🌱`,
     shareUnlocked: (n: string) => `🌱 RSEEDで「${n}」NFTを手に入れた！感謝が価値になる経済圏 #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 RSEEDで「${n}」NFTを目指してるよ！感謝が価値になる経済圏 #RSEED #RITATASEED`,
   },
@@ -135,6 +138,7 @@ const STR = {
     dailyGot: (a: string) => `🎁 Daily bonus +${a} RSEED!`, daily: 'Daily bonus',
     badgesTitle: '🏅 Achievements', badgeLocked: 'Locked',
     totalSupply: '🌍 RITATASEED grown together', supplyNote: 'New minting stops once it reaches the 20M cap. Let\'s grow it together 🌱',
+    poolTitle: '🤝 Community Pool', poolNote: (n: string) => `Used RSEED isn't burned — it collects here. At ${n} it's shared with everyone 🌱`,
     shareUnlocked: (n: string) => `🌱 I got the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 I'm aiming for the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
   },
@@ -245,6 +249,7 @@ export default function Home() {
   const [lastDaily, setLastDaily] = useState<string | null>(null)
   const [claimingDaily, setClaimingDaily] = useState(false)
   const [totalSupply, setTotalSupply] = useState(0)
+  const [poolAmount, setPoolAmount] = useState(0)
   const [lang, setLang] = useState<Lang>('ja')
   const [showNotif, setShowNotif] = useState(false)
   const [notifSeen, setNotifSeen] = useState(0)
@@ -285,7 +290,7 @@ export default function Home() {
       const u = session?.user ?? null
       setUser(u)
       if (u) {
-        await loadUser(u.id); await loadRanking(); await loadTotalSupply()
+        await loadUser(u.id); await loadRanking(); await loadTotalSupply(); await loadPool()
         if (!localStorage.getItem('rseed_tutorial_seen')) setShowTutorial(true)
       }
       setLoading(false)
@@ -409,16 +414,22 @@ export default function Home() {
   }
 
   const loadRanking = async () => {
-    const withAvatar = await supabase.from('users').select('id, username, rseed, arigatou_count, avatar').order('rseed', { ascending: false }).limit(10)
+    const withAvatar = await supabase.from('users').select('id, username, rseed, arigatou_count, avatar').neq('id', TREASURY_ID).order('rseed', { ascending: false }).limit(10)
     const data: RankUser[] | null = withAvatar.data
       ? withAvatar.data
-      : (await supabase.from('users').select('id, username, rseed, arigatou_count').order('rseed', { ascending: false }).limit(10)).data
+      : (await supabase.from('users').select('id, username, rseed, arigatou_count').neq('id', TREASURY_ID).order('rseed', { ascending: false }).limit(10)).data
     setRanking(data ?? [])
   }
 
   const loadTotalSupply = async () => {
     const { data } = await supabase.from('users').select('rseed')
     if (data) setTotalSupply(data.reduce((s, u) => s + (u.rseed ?? 0), 0))
+  }
+
+  const loadPool = async () => {
+    await supabase.from('users').upsert({ id: TREASURY_ID, rseed: 0, arigatou_count: 0, username: '__pool__' }, { onConflict: 'id', ignoreDuplicates: true })
+    const { data } = await supabase.from('users').select('rseed').eq('id', TREASURY_ID).maybeSingle()
+    setPoolAmount(data?.rseed ?? 0)
   }
 
   const handleLogin = async () => {
@@ -498,6 +509,12 @@ export default function Home() {
     if (rseed < cost) { showToast(t.notEnough); setSendingArigatou(false); return }
     await supabase.from('users').update({ rseed: rseed - cost }).eq('id', user.id)
     await supabase.from('users').update({ rseed: target.rseed + arigatouAmount * 0.005, arigatou_count: (target.arigatou_count ?? 0) + 1 }).eq('id', target.id)
+    // 使われた差額は燃やさず「みんなのプール」へ集める（ポジティブサム）
+    const poolAdd = cost - arigatouAmount * 0.005
+    const { data: tre } = await supabase.from('users').select('rseed').eq('id', TREASURY_ID).maybeSingle()
+    const newPool = (tre?.rseed ?? 0) + poolAdd
+    await supabase.from('users').upsert({ id: TREASURY_ID, rseed: newPool, arigatou_count: 0 }, { onConflict: 'id' })
+    setPoolAmount(newPool)
     const msg = arigatouMessage.trim().slice(0, 50)
     const rows = [
       { user_id: user.id, type: 'arigatou_sent', amount: cost, message: msg, to_username: arigatouTarget.trim() },
@@ -787,6 +804,17 @@ export default function Home() {
                 <span style={{ ...textMuted, fontSize: 10 }}>🌱 → 🌳</span>
               </div>
               <div style={{ ...textMuted, fontSize: 10, marginTop: 8, lineHeight: 1.5 }}>{t.supplyNote}</div>
+            </div>
+            <div style={{ ...W, border: borderGreen, borderRadius: 14, padding: '14px', marginTop: 10 }}>
+              <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 8 }}>{t.poolTitle}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ color: '#2d6636', fontSize: 26, fontWeight: 500, fontFamily: 'monospace' }}>{poolAmount.toFixed(4)}</span>
+                <span style={{ ...textMuted, fontSize: 12 }}>/ {DISTRIBUTE_THRESHOLD}</span>
+              </div>
+              <div style={{ background: '#e8f4e0', borderRadius: 4, height: 6, overflow: 'hidden', marginTop: 8 }}>
+                <div style={{ background: '#f0a830', height: '100%', width: `${Math.min((poolAmount / DISTRIBUTE_THRESHOLD) * 100, 100)}%`, borderRadius: 4, transition: 'width 0.6s ease' }} />
+              </div>
+              <div style={{ ...textMuted, fontSize: 10, marginTop: 8, lineHeight: 1.5 }}>{t.poolNote(String(DISTRIBUTE_THRESHOLD))}</div>
             </div>
           </div>
           <div style={{ padding: '14px 16px', ...G, borderBottom: '0.5px solid #e8f4e0' }}>
