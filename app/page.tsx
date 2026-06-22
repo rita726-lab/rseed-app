@@ -80,7 +80,7 @@ const STR = {
     nameSaved: '✨ 名前を保存したよ！', earned: (a: string) => `🌱 +${a} RSEED 獲得！`, saveFailed: '⚠️ 保存に失敗：', userNotFound: 'ユーザーが見つかりません', notEnough: 'RSEEDが足りません', arigatouToast: '💚 ありがとうを送ったよ！',
     kujiRange: '0.001〜10 RSEEDで入力してね', kujiNotEnough: 'RSEEDが足りない！', titleUp: (t: string) => `🎉 称号アップ！「${t}」になったよ`, avatarSaved: '✨ アバターを変更したよ！',
     navHome: 'ホーム', navRank: 'ランク', navKuji: 'くじ', navNft: 'NFT', navProfile: 'プロフィール',
-    notifTitle: 'お知らせ', notifEmpty: 'まだお知らせはないよ', gotArigatou: '🌱 ありがとうをもらった！',
+    notifTitle: 'お知らせ', notifEmpty: 'まだお知らせはないよ', gotArigatou: '🌱 ありがとうをもらった！', navWallet: 'ウォレット',
   },
   en: {
     loading: 'Loading...', mailSent: 'Email sent!', mailSentDesc: 'Tap the link in the email to log in 🌱', tryAnother: 'Try another email',
@@ -107,7 +107,7 @@ const STR = {
     nameSaved: '✨ Name saved!', earned: (a: string) => `🌱 +${a} RSEED earned!`, saveFailed: '⚠️ Save failed: ', userNotFound: 'User not found', notEnough: 'Not enough RSEED', arigatouToast: '💚 Arigatou sent!',
     kujiRange: 'Enter between 0.001 and 10 RSEED', kujiNotEnough: 'Not enough RSEED!', titleUp: (t: string) => `🎉 Rank up! You're now ${t}`, avatarSaved: '✨ Avatar updated!',
     navHome: 'Home', navRank: 'Rank', navKuji: 'Lottery', navNft: 'NFT', navProfile: 'Profile',
-    notifTitle: 'Notifications', notifEmpty: 'No notifications yet', gotArigatou: '🌱 You received arigatou!',
+    notifTitle: 'Notifications', notifEmpty: 'No notifications yet', gotArigatou: '🌱 You received arigatou!', navWallet: 'Wallet',
   },
 }
 
@@ -634,8 +634,8 @@ export default function Home() {
             <Tree style={{ position: 'absolute', left: -8, bottom: 0 }} />
             <Tree style={{ position: 'absolute', right: -8, bottom: 0 }} />
             <div style={{ ...pill, marginBottom: 12, position: 'relative', zIndex: 1, fontSize: 11, padding: '3px 14px' }}>{userTitle} ✦</div>
-            <div style={{ fontSize: 42, fontWeight: 500, color: '#2d6636', letterSpacing: 1, position: 'relative', zIndex: 1 }}>{rseed.toFixed(4)}</div>
-            <div style={{ fontSize: 12, ...textMuted, marginTop: 2, position: 'relative', zIndex: 1 }}>RSEED</div>
+            <div onClick={() => setTab('wallet')} style={{ fontSize: 42, fontWeight: 500, color: '#2d6636', letterSpacing: 1, position: 'relative', zIndex: 1, cursor: 'pointer' }}>{rseed.toFixed(4)}</div>
+            <div style={{ fontSize: 12, ...textMuted, marginTop: 2, position: 'relative', zIndex: 1 }}>RSEED 👛</div>
             <div style={{ background: '#f0f9ea', border: '0.5px solid #c8e8bc', borderRadius: 14, padding: '12px 16px', marginTop: 14, position: 'relative', zIndex: 1 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
@@ -952,14 +952,15 @@ export default function Home() {
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: 420, ...W, borderTop: '0.5px solid #e0f0d8', padding: '10px 0 20px', display: 'flex', justifyContent: 'space-around', zIndex: 50 }}>
         {([
           { id: 'home', icon: '🏠', label: t.navHome },
-          { id: 'ranking', icon: '🏆', label: t.navRank },
+          { id: 'wallet', icon: '👛', label: t.navWallet },
           { id: 'kuji', icon: '🎋', label: t.navKuji },
+          { id: 'ranking', icon: '🏆', label: t.navRank },
           { id: 'nft', icon: '🖼️', label: t.navNft },
           { id: 'profile', icon: '👤', label: t.navProfile },
         ] as { id: Tab; icon: string; label: string }[]).map(({ id, icon, label }) => (
           <button key={id} onClick={() => setTab(id)}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', cursor: 'pointer', color: tab === id ? '#3a7d44' : '#b8dda8', fontSize: 10 }}>
-            <span style={{ fontSize: 22 }}>{icon}</span>
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'none', border: 'none', cursor: 'pointer', color: tab === id ? '#3a7d44' : '#b8dda8', fontSize: 9, whiteSpace: 'nowrap', flex: 1, padding: 0 }}>
+            <span style={{ fontSize: 20 }}>{icon}</span>
             {label}
           </button>
         ))}
