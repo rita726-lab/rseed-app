@@ -36,7 +36,7 @@ const TITLE_ORDER = ['SEED', 'SPROUT', 'BLOOM', 'LEGEND']
 
 const DISCORD_INVITE = 'https://discord.gg/VkPnNunw'
 const AVATAR_CHOICES = ['🌱', '🌿', '🌸', '🌳', '🍀', '🌻', '🐰', '🐿️', '🦊', '🐸', '🦋', '🐝']
-const NOTE_TUTORIAL_URL = 'https://note.com/rita_sunada' // TODO: チュートリアル記事のURLに差し替え
+const NOTE_TUTORIAL_URL = 'https://note.com/aoki722' // チュートリアル記事ができたら個別記事URLに差し替え可
 
 type Lang = 'ja' | 'en'
 
