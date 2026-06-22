@@ -38,6 +38,7 @@ const TITLE_ORDER = ['SEED', 'SPROUT', 'BLOOM', 'LEGEND']
 const DISCORD_INVITE = 'https://discord.gg/VkPnNunw'
 const AVATAR_CHOICES = ['🌱', '🌿', '🌸', '🌳', '🍀', '🌻', '🐰', '🐿️', '🦊', '🐸', '🦋', '🐝']
 const DAILY_AMOUNT = 0.005
+const MAX_SUPPLY = 20_000_000
 
 type BadgeStats = { rseed: number; arigatouCount: number; nftCount: number; mined: boolean }
 const BADGES = [
@@ -98,6 +99,7 @@ const STR = {
     dailyBonus: '🎁 デイリーボーナス', dailyClaim: '受け取る', dailyDone: '✅ 今日は受け取り済み', dailyDesc: '毎日ログインで +0.005 RSEED',
     dailyGot: (a: string) => `🎁 デイリーボーナス +${a} RSEED！`, daily: 'デイリーボーナス',
     badgesTitle: '🏅 実績バッジ', badgeLocked: '未獲得',
+    totalSupply: '🌍 みんなで育てたRITATASEED', supplyNote: '上限2,000万枚に到達したら新規発行は止まるよ。みんなで少しずつ育てていこう🌱',
     shareUnlocked: (n: string) => `🌱 RSEEDで「${n}」NFTを手に入れた！感謝が価値になる経済圏 #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 RSEEDで「${n}」NFTを目指してるよ！感謝が価値になる経済圏 #RSEED #RITATASEED`,
   },
@@ -132,6 +134,7 @@ const STR = {
     dailyBonus: '🎁 Daily bonus', dailyClaim: 'Claim', dailyDone: '✅ Claimed today', dailyDesc: 'Log in daily for +0.005 RSEED',
     dailyGot: (a: string) => `🎁 Daily bonus +${a} RSEED!`, daily: 'Daily bonus',
     badgesTitle: '🏅 Achievements', badgeLocked: 'Locked',
+    totalSupply: '🌍 RITATASEED grown together', supplyNote: 'New minting stops once it reaches the 20M cap. Let\'s grow it together 🌱',
     shareUnlocked: (n: string) => `🌱 I got the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 I'm aiming for the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
   },
@@ -241,6 +244,7 @@ export default function Home() {
   const [avatar, setAvatar] = useState('')
   const [lastDaily, setLastDaily] = useState<string | null>(null)
   const [claimingDaily, setClaimingDaily] = useState(false)
+  const [totalSupply, setTotalSupply] = useState(0)
   const [lang, setLang] = useState<Lang>('ja')
   const [showNotif, setShowNotif] = useState(false)
   const [notifSeen, setNotifSeen] = useState(0)
@@ -281,7 +285,7 @@ export default function Home() {
       const u = session?.user ?? null
       setUser(u)
       if (u) {
-        await loadUser(u.id); await loadRanking()
+        await loadUser(u.id); await loadRanking(); await loadTotalSupply()
         if (!localStorage.getItem('rseed_tutorial_seen')) setShowTutorial(true)
       }
       setLoading(false)
@@ -412,6 +416,11 @@ export default function Home() {
     setRanking(data ?? [])
   }
 
+  const loadTotalSupply = async () => {
+    const { data } = await supabase.from('users').select('rseed')
+    if (data) setTotalSupply(data.reduce((s, u) => s + (u.rseed ?? 0), 0))
+  }
+
   const handleLogin = async () => {
     setLoginError('')
     const trimmed = email.trim()
@@ -454,7 +463,7 @@ export default function Home() {
       setLastMined(now)
       applyAccumulated(now)
       showToast(t.earned(earned.toFixed(3)))
-      await loadRanking()
+      await loadRanking(); await loadTotalSupply()
     } else {
       showToast(t.saveFailed + error.message)
     }
@@ -473,7 +482,7 @@ export default function Home() {
       setLastDaily(now)
       setFireworks(true)
       showToast(t.dailyGot(DAILY_AMOUNT.toFixed(3)))
-      await loadRanking()
+      await loadRanking(); await loadTotalSupply()
     } else {
       showToast(t.saveFailed + error.message)
     }
@@ -763,6 +772,21 @@ export default function Home() {
                 style={{ flexShrink: 0, padding: '9px 18px', borderRadius: 20, background: canClaimDaily ? '#f0a830' : '#edf7e8', color: canClaimDaily ? '#fff' : '#a0c4a0', fontWeight: 500, fontSize: 13, border: canClaimDaily ? 'none' : '0.5px solid #d4eacc', cursor: canClaimDaily ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
                 {canClaimDaily ? `🎁 ${t.dailyClaim}` : t.dailyDone}
               </button>
+            </div>
+            <div style={{ ...W, border: borderGreen, borderRadius: 14, padding: '14px', marginTop: 10 }}>
+              <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 8 }}>{t.totalSupply}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ color: '#2d6636', fontSize: 26, fontWeight: 500, fontFamily: 'monospace' }}>{totalSupply.toFixed(3)}</span>
+                <span style={{ ...textMuted, fontSize: 12 }}>/ {MAX_SUPPLY.toLocaleString()}</span>
+              </div>
+              <div style={{ background: '#e8f4e0', borderRadius: 4, height: 6, overflow: 'hidden', marginTop: 8 }}>
+                <div style={{ background: '#3a7d44', height: '100%', width: `${Math.max(Math.min((totalSupply / MAX_SUPPLY) * 100, 100), 0.4)}%`, borderRadius: 4 }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <span style={{ ...textMuted, fontSize: 10 }}>{((totalSupply / MAX_SUPPLY) * 100).toFixed(6)}%</span>
+                <span style={{ ...textMuted, fontSize: 10 }}>🌱 → 🌳</span>
+              </div>
+              <div style={{ ...textMuted, fontSize: 10, marginTop: 8, lineHeight: 1.5 }}>{t.supplyNote}</div>
             </div>
           </div>
           <div style={{ padding: '14px 16px', ...G, borderBottom: '0.5px solid #e8f4e0' }}>
