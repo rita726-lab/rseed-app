@@ -19,7 +19,7 @@ type RankUser = {
 }
 
 type HistoryItem = {
-  type: 'mine' | 'arigatou_sent' | 'arigatou_received'
+  type: 'mine' | 'arigatou_sent' | 'arigatou_received' | 'daily'
   amount: number
   created_at: string
   from_username?: string
@@ -37,6 +37,17 @@ const TITLE_ORDER = ['SEED', 'SPROUT', 'BLOOM', 'LEGEND']
 
 const DISCORD_INVITE = 'https://discord.gg/VkPnNunw'
 const AVATAR_CHOICES = ['🌱', '🌿', '🌸', '🌳', '🍀', '🌻', '🐰', '🐿️', '🦊', '🐸', '🦋', '🐝']
+const DAILY_AMOUNT = 0.005
+
+type BadgeStats = { rseed: number; arigatouCount: number; nftCount: number; mined: boolean }
+const BADGES = [
+  { id: 'miner', icon: '⛏️', name: { ja: 'マイナー', en: 'Miner' }, desc: { ja: '初めてマイニングした', en: 'Mined for the first time' }, earned: (s: BadgeStats) => s.mined || s.rseed > 0 },
+  { id: 'loved', icon: '💚', name: { ja: '愛されはじめ', en: 'First Love' }, desc: { ja: '初めてありがとうをもらった', en: 'Received your first arigatou' }, earned: (s: BadgeStats) => s.arigatouCount >= 1 },
+  { id: 'sprout', icon: '🌿', name: { ja: 'スプラウト', en: 'Sprout' }, desc: { ja: '称号SPROUT到達', en: 'Reached SPROUT' }, earned: (s: BadgeStats) => s.arigatouCount >= 10 },
+  { id: 'bloom', icon: '🌸', name: { ja: 'ブルーム', en: 'Bloom' }, desc: { ja: '称号BLOOM到達', en: 'Reached BLOOM' }, earned: (s: BadgeStats) => s.arigatouCount >= 100 },
+  { id: 'legend', icon: '🌳', name: { ja: 'レジェンド', en: 'Legend' }, desc: { ja: '称号LEGEND到達', en: 'Reached LEGEND' }, earned: (s: BadgeStats) => s.arigatouCount >= 500 },
+  { id: 'collector', icon: '🖼️', name: { ja: 'コレクター', en: 'Collector' }, desc: { ja: 'NFTを2つ以上解放', en: 'Unlocked 2+ NFTs' }, earned: (s: BadgeStats) => s.nftCount >= 2 },
+]
 const NOTE_TUTORIAL_URL = 'https://note.com/aoki722' // チュートリアル記事ができたら個別記事URLに差し替え可
 
 type Lang = 'ja' | 'en'
@@ -84,6 +95,9 @@ const STR = {
     notifTitle: 'お知らせ', notifEmpty: 'まだお知らせはないよ', gotArigatou: '🌱 ありがとうをもらった！', navWallet: 'ウォレット',
     share: '📤 シェアする', linkCopied: '📋 シェア文をコピーしたよ！',
     msgLabel: 'メッセージ（任意・50文字まで）', msgPh: '例：手伝ってくれてありがとう！',
+    dailyBonus: '🎁 デイリーボーナス', dailyClaim: '受け取る', dailyDone: '✅ 今日は受け取り済み', dailyDesc: '毎日ログインで +0.005 RSEED',
+    dailyGot: (a: string) => `🎁 デイリーボーナス +${a} RSEED！`, daily: 'デイリーボーナス',
+    badgesTitle: '🏅 実績バッジ', badgeLocked: '未獲得',
     shareUnlocked: (n: string) => `🌱 RSEEDで「${n}」NFTを手に入れた！感謝が価値になる経済圏 #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 RSEEDで「${n}」NFTを目指してるよ！感謝が価値になる経済圏 #RSEED #RITATASEED`,
   },
@@ -115,6 +129,9 @@ const STR = {
     notifTitle: 'Notifications', notifEmpty: 'No notifications yet', gotArigatou: '🌱 You received arigatou!', navWallet: 'Wallet',
     share: '📤 Share', linkCopied: '📋 Share text copied!',
     msgLabel: 'Message (optional, up to 50 chars)', msgPh: 'e.g. Thanks for helping me!',
+    dailyBonus: '🎁 Daily bonus', dailyClaim: 'Claim', dailyDone: '✅ Claimed today', dailyDesc: 'Log in daily for +0.005 RSEED',
+    dailyGot: (a: string) => `🎁 Daily bonus +${a} RSEED!`, daily: 'Daily bonus',
+    badgesTitle: '🏅 Achievements', badgeLocked: 'Locked',
     shareUnlocked: (n: string) => `🌱 I got the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 I'm aiming for the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
   },
@@ -222,6 +239,8 @@ export default function Home() {
   const [selectedNft, setSelectedNft] = useState<typeof NFT_LIST[0] | null>(null)
   const [fireworks, setFireworks] = useState(false)
   const [avatar, setAvatar] = useState('')
+  const [lastDaily, setLastDaily] = useState<string | null>(null)
+  const [claimingDaily, setClaimingDaily] = useState(false)
   const [lang, setLang] = useState<Lang>('ja')
   const [showNotif, setShowNotif] = useState(false)
   const [notifSeen, setNotifSeen] = useState(0)
@@ -252,6 +271,10 @@ export default function Home() {
   const progress = nextThreshold ? Math.min((arigatouCount / nextThreshold) * 100, 100) : 100
   const notifications = history.filter(h => h.type === 'arigatou_received')
   const unreadCount = notifications.filter(h => new Date(h.created_at).getTime() > notifSeen).length
+  const nftCount = NFT_LIST.filter(n => isNftUnlocked(n, userTitle)).length
+  const badgeStats: BadgeStats = { rseed, arigatouCount, nftCount, mined: history.some(h => h.type === 'mine') }
+  const todayStr = new Date().toDateString()
+  const canClaimDaily = !lastDaily || new Date(lastDaily).toDateString() !== todayStr
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_, session) => {
@@ -375,6 +398,8 @@ export default function Home() {
     if (data.avatar) setAvatar(data.avatar)
     setLastMined(data.last_mined)
     applyAccumulated(data.last_mined)
+    const { data: dd } = await supabase.from('users').select('last_daily').eq('id', uid).maybeSingle()
+    if (dd && 'last_daily' in dd) setLastDaily(dd.last_daily)
     const { data: hist } = await supabase.from('history').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(10)
     setHistory(hist ?? [])
   }
@@ -405,11 +430,11 @@ export default function Home() {
     if (name.length > 16) { setNameError(t.nameMax); return }
     if (!/^[a-zA-Z0-9_ぁ-んァ-ヶー一-龠]+$/.test(name)) { setNameError(t.nameInvalid); return }
     setSavingName(true)
-    const { data: existing } = await supabase.from('users').select('id').eq('username', name).neq('id', user.id).maybeSingle()
+    const { data: existing } = await supabase.from('users').select('id').ilike('username', name).neq('id', user.id).maybeSingle()
     if (existing) { setNameError(t.nameTaken); setSavingName(false); return }
     const { error } = await supabase.from('users').update({ username: name }).eq('id', user.id)
     setSavingName(false)
-    if (error) { setNameError(t.nameSaveFail); return }
+    if (error) { setNameError(/unique|duplicate/i.test(error.message) ? t.nameTaken : t.nameSaveFail); return }
     setUsername(name)
     await loadRanking()
     showToast(t.nameSaved)
@@ -434,6 +459,25 @@ export default function Home() {
       showToast(t.saveFailed + error.message)
     }
     setMining(false)
+  }
+
+  const handleClaimDaily = async () => {
+    if (!user || !canClaimDaily || claimingDaily) return
+    setClaimingDaily(true)
+    const now = new Date().toISOString()
+    const newBalance = rseed + DAILY_AMOUNT
+    const { error } = await supabase.from('users').update({ rseed: newBalance, last_daily: now }).eq('id', user.id)
+    if (!error) {
+      await supabase.from('history').insert({ user_id: user.id, type: 'daily', amount: DAILY_AMOUNT })
+      setRseed(newBalance)
+      setLastDaily(now)
+      setFireworks(true)
+      showToast(t.dailyGot(DAILY_AMOUNT.toFixed(3)))
+      await loadRanking()
+    } else {
+      showToast(t.saveFailed + error.message)
+    }
+    setClaimingDaily(false)
   }
 
   const handleSendArigatou = async () => {
@@ -709,6 +753,18 @@ export default function Home() {
               {t.sendArigatou}
             </button>
           </div>
+          <div style={{ padding: '12px 16px', ...G, borderBottom: '0.5px solid #e8f4e0' }}>
+            <div style={{ ...W, border: borderGreen, borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                <div style={{ ...textGreen, fontSize: 13, fontWeight: 500 }}>{t.dailyBonus}</div>
+                <div style={{ ...textMuted, fontSize: 11, marginTop: 1 }}>{t.dailyDesc}</div>
+              </div>
+              <button onClick={handleClaimDaily} disabled={!canClaimDaily || claimingDaily}
+                style={{ flexShrink: 0, padding: '9px 18px', borderRadius: 20, background: canClaimDaily ? '#f0a830' : '#edf7e8', color: canClaimDaily ? '#fff' : '#a0c4a0', fontWeight: 500, fontSize: 13, border: canClaimDaily ? 'none' : '0.5px solid #d4eacc', cursor: canClaimDaily ? 'pointer' : 'default', whiteSpace: 'nowrap' }}>
+                {canClaimDaily ? `🎁 ${t.dailyClaim}` : t.dailyDone}
+              </button>
+            </div>
+          </div>
           <div style={{ padding: '14px 16px', ...G, borderBottom: '0.5px solid #e8f4e0' }}>
             <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 10, fontWeight: 500 }}>{t.recentHistory}</div>
             {history.length === 0 && <div style={{ color: '#b8dda8', fontSize: 13 }}>{t.noHistory}</div>}
@@ -716,7 +772,7 @@ export default function Home() {
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < history.length - 1 ? '0.5px solid #e8f4e0' : 'none' }}>
                 <div>
                   <div style={{ ...textPrimary, fontSize: 13 }}>
-                    {h.type === 'mine' ? `⛏️ ${t.mining}` : h.type === 'arigatou_sent' ? `💚 ${t.arigatouSent}` : `🌱 ${t.arigatouReceived}`}
+                    {h.type === 'mine' ? `⛏️ ${t.mining}` : h.type === 'daily' ? `🎁 ${t.daily}` : h.type === 'arigatou_sent' ? `💚 ${t.arigatouSent}` : `🌱 ${t.arigatouReceived}`}
                   </div>
                   {h.message && <div style={{ ...textGreen, fontSize: 11, marginTop: 1 }}>「{h.message}」</div>}
                   <div style={{ ...textMuted, fontSize: 11 }}>{timeAgo(h.created_at, lang)}</div>
@@ -734,9 +790,11 @@ export default function Home() {
         <div style={{ padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>
           <Tree style={{ position: 'absolute', right: -8, top: 10 }} />
           <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 12, fontWeight: 500 }}>RANKING</div>
-          {ranking.map((u, i) => (
-            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '0.5px solid #e8f4e0' }}>
-              <div style={{ color: '#b8dda8', fontSize: 13, width: 20, textAlign: 'center' }}>{i + 1}</div>
+          {ranking.map((u, i) => {
+            const isMe = u.id === user.id
+            return (
+            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', margin: isMe ? '2px -10px' : '2px 0', borderRadius: isMe ? 12 : 0, background: isMe ? '#edf7e8' : 'transparent', border: isMe ? '0.5px solid #b8dda8' : 'none', borderBottom: isMe ? '0.5px solid #b8dda8' : '0.5px solid #e8f4e0' }}>
+              <div style={{ color: isMe ? '#3a7d44' : '#b8dda8', fontSize: 13, width: 20, textAlign: 'center', fontWeight: isMe ? 600 : 400 }}>{i + 1}</div>
               <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#edf7e8', border: '0.5px solid #c8e8bc', display: 'flex', alignItems: 'center', justifyContent: 'center', ...textGreen, fontSize: u.avatar ? 18 : 12, fontWeight: 500 }}>
                 {u.avatar || (u.username ?? 'U').slice(0, 2).toUpperCase()}
               </div>
@@ -746,7 +804,8 @@ export default function Home() {
               </div>
               <div style={{ ...textGreen, fontSize: 12, fontFamily: 'monospace' }}>{u.rseed.toFixed(3)}</div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -858,12 +917,13 @@ export default function Home() {
             }).map((h, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderBottom: '0.5px solid #f0f7ec' }}>
                 <div style={{ width: 34, height: 34, borderRadius: '50%', background: h.type === 'arigatou_sent' ? '#fff0f0' : '#edf7e8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
-                  {h.type === 'mine' ? '⛏️' : h.type === 'arigatou_sent' ? '💸' : '💚'}
+                  {h.type === 'mine' ? '⛏️' : h.type === 'daily' ? '🎁' : h.type === 'arigatou_sent' ? '💸' : '💚'}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ ...textPrimary, fontSize: 13, fontWeight: 500 }}>
-                    {h.type === 'mine' ? t.mining : h.type === 'arigatou_sent' ? t.arigatouSent : t.arigatouReceived}
+                    {h.type === 'mine' ? t.mining : h.type === 'daily' ? t.daily : h.type === 'arigatou_sent' ? t.arigatouSent : t.arigatouReceived}
                   </div>
+                  {h.message && <div style={{ ...textGreen, fontSize: 11 }}>「{h.message}」</div>}
                   <div style={{ color: '#a0c4a0', fontSize: 10, marginTop: 1 }}>{timeAgo(h.created_at, lang)}</div>
                 </div>
                 <div style={{ fontSize: 13, fontFamily: 'monospace', fontWeight: 500, color: h.type === 'arigatou_sent' ? '#e24b4a' : '#3a7d44' }}>
@@ -941,6 +1001,23 @@ export default function Home() {
                   {emoji}
                 </button>
               ))}
+            </div>
+          </div>
+          <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '16px', marginTop: 14 }}>
+            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 10 }}>{t.badgesTitle}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              {BADGES.map(b => {
+                const earned = b.earned(badgeStats)
+                return (
+                  <div key={b.id} style={{ textAlign: 'center', opacity: earned ? 1 : 0.45 }}>
+                    <div style={{ width: 46, height: 46, margin: '0 auto', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, background: earned ? '#edf7e8' : '#f1efe8', border: earned ? '0.5px solid #b8dda8' : '0.5px dashed #c8c8c8', filter: earned ? 'none' : 'grayscale(1)' }}>
+                      {earned ? b.icon : '🔒'}
+                    </div>
+                    <div style={{ ...textPrimary, fontSize: 10, fontWeight: 500, marginTop: 4 }}>{b.name[lang]}</div>
+                    <div style={{ ...textMuted, fontSize: 9, marginTop: 1, lineHeight: 1.3 }}>{earned ? b.desc[lang] : t.badgeLocked}</div>
+                  </div>
+                )
+              })}
             </div>
           </div>
           <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer"
