@@ -255,6 +255,9 @@ export default function Home() {
     if (saved) setEmail(saved)
     const savedLang = localStorage.getItem('rseed_lang')
     if (savedLang === 'en' || savedLang === 'ja') setLang(savedLang)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
+    }
   }, [])
 
   const toggleLang = () => {
