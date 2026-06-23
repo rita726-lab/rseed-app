@@ -103,6 +103,7 @@ const STR = {
     badgesTitle: '🏅 実績バッジ', badgeLocked: '未獲得',
     totalSupply: '🌍 みんなで育てたRITATASEED', supplyNote: '上限2,000万枚に到達したら新規発行は止まるよ。みんなで少しずつ育てていこう🌱',
     poolTitle: '🤝 みんなのプール', poolNote: (n: string) => `使われたRSEEDは燃えずにここへ集まるよ。${n}枚たまったら全員に分配🌱`,
+    rankByRseed: '💰 RSEED', rankByArigatou: '💚 ありがとう', thankBtn: '💚 ありがとう', setNameFirst: 'まずは名前を決めよう！', setNameDesc: 'ランキングやありがとうで表示される名前だよ', goSetName: '✏️ 名前を決める',
     shareUnlocked: (n: string) => `🌱 RSEEDで「${n}」NFTを手に入れた！感謝が価値になる経済圏 #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 RSEEDで「${n}」NFTを目指してるよ！感謝が価値になる経済圏 #RSEED #RITATASEED`,
   },
@@ -139,6 +140,7 @@ const STR = {
     badgesTitle: '🏅 Achievements', badgeLocked: 'Locked',
     totalSupply: '🌍 RITATASEED grown together', supplyNote: 'New minting stops once it reaches the 20M cap. Let\'s grow it together 🌱',
     poolTitle: '🤝 Community Pool', poolNote: (n: string) => `Used RSEED isn't burned — it collects here. At ${n} it's shared with everyone 🌱`,
+    rankByRseed: '💰 RSEED', rankByArigatou: '💚 Arigatou', thankBtn: '💚 Thank', setNameFirst: 'Set your name first!', setNameDesc: 'Your display name in ranking and arigatou', goSetName: '✏️ Set name',
     shareUnlocked: (n: string) => `🌱 I got the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 I'm aiming for the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
   },
@@ -175,6 +177,28 @@ function timeAgo(dateStr: string, lang: Lang = 'ja') {
   if (h < 1) return 'さっき'
   if (h < 24) return `${h}時間前`
   return `${Math.floor(h / 24)}日前`
+}
+
+let audioCtx: AudioContext | null = null
+function playTone(freqs: number[], dur = 0.15) {
+  try {
+    if (typeof window === 'undefined') return
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    audioCtx = audioCtx || new AC()
+    const ctx = audioCtx
+    freqs.forEach((f, idx) => {
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.type = 'sine'
+      o.frequency.value = f
+      o.connect(g); g.connect(ctx.destination)
+      const start = ctx.currentTime + idx * dur
+      g.gain.setValueAtTime(0.0001, start)
+      g.gain.exponentialRampToValueAtTime(0.18, start + 0.02)
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur)
+      o.start(start); o.stop(start + dur)
+    })
+  } catch {}
 }
 
 function Tree({ style }: { style?: React.CSSProperties }) {
@@ -250,6 +274,8 @@ export default function Home() {
   const [claimingDaily, setClaimingDaily] = useState(false)
   const [totalSupply, setTotalSupply] = useState(0)
   const [poolAmount, setPoolAmount] = useState(0)
+  const [rankBy, setRankBy] = useState<'rseed' | 'arigatou'>('rseed')
+  const [soundOn, setSoundOn] = useState(true)
   const [lang, setLang] = useState<Lang>('ja')
   const [showNotif, setShowNotif] = useState(false)
   const [notifSeen, setNotifSeen] = useState(0)
@@ -303,6 +329,7 @@ export default function Home() {
     if (saved) setEmail(saved)
     const savedLang = localStorage.getItem('rseed_lang')
     if (savedLang === 'en' || savedLang === 'ja') setLang(savedLang)
+    if (localStorage.getItem('rseed_sound') === 'off') setSoundOn(false)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {})
     }
@@ -341,6 +368,13 @@ export default function Home() {
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(''), 2500)
+  }
+
+  const playSound = (kind: 'success' | 'win' | 'pop') => {
+    if (!soundOn) return
+    if (kind === 'win') playTone([660, 880, 1100, 1320])
+    else if (kind === 'success') playTone([660, 990])
+    else playTone([880, 1175])
   }
 
   const handleShareNft = async (nft: typeof NFT_LIST[0]) => {
@@ -414,10 +448,10 @@ export default function Home() {
   }
 
   const loadRanking = async () => {
-    const withAvatar = await supabase.from('users').select('id, username, rseed, arigatou_count, avatar').neq('id', TREASURY_ID).order('rseed', { ascending: false }).limit(10)
+    const withAvatar = await supabase.from('users').select('id, username, rseed, arigatou_count, avatar').neq('id', TREASURY_ID).order('rseed', { ascending: false }).limit(50)
     const data: RankUser[] | null = withAvatar.data
       ? withAvatar.data
-      : (await supabase.from('users').select('id, username, rseed, arigatou_count').neq('id', TREASURY_ID).order('rseed', { ascending: false }).limit(10)).data
+      : (await supabase.from('users').select('id, username, rseed, arigatou_count').neq('id', TREASURY_ID).order('rseed', { ascending: false }).limit(50)).data
     setRanking(data ?? [])
   }
 
@@ -473,6 +507,7 @@ export default function Home() {
       setRseed(newBalance)
       setLastMined(now)
       applyAccumulated(now)
+      playSound('success')
       showToast(t.earned(earned.toFixed(3)))
       await loadRanking(); await loadTotalSupply()
     } else {
@@ -492,6 +527,7 @@ export default function Home() {
       setRseed(newBalance)
       setLastDaily(now)
       setFireworks(true)
+      playSound('win')
       showToast(t.dailyGot(DAILY_AMOUNT.toFixed(3)))
       await loadRanking(); await loadTotalSupply()
     } else {
@@ -528,6 +564,7 @@ export default function Home() {
     setRseed(r => r - cost)
     setArigatouTarget('')
     setArigatouMessage('')
+    playSound('pop')
     showToast(t.arigatouToast)
     setSendingArigatou(false)
   }
@@ -552,7 +589,9 @@ export default function Home() {
     await supabase.from('history').insert({ user_id: user.id, type: diff >= 0 ? 'arigatou_received' : 'arigatou_sent', amount: Math.abs(diff) })
     setRseed(newBalance)
     setKujiResult({ type, payout, bet })
-    if (type === 'big') setFireworks(true)
+    if (type === 'big') { setFireworks(true); playSound('win') }
+    else if (type === 'mid') playSound('success')
+    else playSound('pop')
     setKujiPlaying(false)
   }
 
@@ -746,6 +785,16 @@ export default function Home() {
 
       {tab === 'home' && (
         <>
+          {!username && (
+            <div onClick={() => setTab('profile')}
+              style={{ margin: '12px 16px 0', padding: '14px 16px', borderRadius: 14, background: '#fff7e8', border: '0.5px solid #f0d8a8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div>
+                <div style={{ color: '#a06a10', fontSize: 13, fontWeight: 500 }}>👋 {t.setNameFirst}</div>
+                <div style={{ color: '#c0954a', fontSize: 11, marginTop: 2 }}>{t.setNameDesc}</div>
+              </div>
+              <span style={{ flexShrink: 0, background: '#f0a830', color: '#fff', fontSize: 12, fontWeight: 500, padding: '8px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>{t.goSetName}</span>
+            </div>
+          )}
           <div style={{ ...W, padding: '24px 20px 18px', textAlign: 'center', borderBottom: '0.5px solid #e0f0d8', position: 'relative', overflow: 'hidden' }}>
             <Tree style={{ position: 'absolute', left: -8, bottom: 0 }} />
             <Tree style={{ position: 'absolute', right: -8, bottom: 0 }} />
@@ -841,12 +890,20 @@ export default function Home() {
       {tab === 'ranking' && (
         <div style={{ padding: '14px 16px', position: 'relative', overflow: 'hidden' }}>
           <Tree style={{ position: 'absolute', right: -8, top: 10 }} />
-          <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 12, fontWeight: 500 }}>RANKING</div>
-          {ranking.map((u, i) => {
+          <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 10, fontWeight: 500 }}>RANKING</div>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 12, background: '#f7fbf4', borderRadius: 12, padding: 4 }}>
+            {([['rseed', t.rankByRseed], ['arigatou', t.rankByArigatou]] as const).map(([val, label]) => (
+              <button key={val} onClick={() => setRankBy(val)}
+                style={{ flex: 1, padding: '8px 0', borderRadius: 9, fontSize: 12, cursor: 'pointer', border: rankBy === val ? '0.5px solid #c8e8bc' : 'none', background: rankBy === val ? '#fff' : 'transparent', color: rankBy === val ? '#3a7d44' : '#8ab88a', fontWeight: rankBy === val ? 500 : 400 }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {[...ranking].sort((a, b) => rankBy === 'rseed' ? b.rseed - a.rseed : (b.arigatou_count ?? 0) - (a.arigatou_count ?? 0)).slice(0, 10).map((u, i) => {
             const isMe = u.id === user.id
             return (
             <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', margin: isMe ? '2px -10px' : '2px 0', borderRadius: isMe ? 12 : 0, background: isMe ? '#edf7e8' : 'transparent', border: isMe ? '0.5px solid #b8dda8' : 'none', borderBottom: isMe ? '0.5px solid #b8dda8' : '0.5px solid #e8f4e0' }}>
-              <div style={{ color: isMe ? '#3a7d44' : '#b8dda8', fontSize: 13, width: 20, textAlign: 'center', fontWeight: isMe ? 600 : 400 }}>{i + 1}</div>
+              <div style={{ color: i < 3 ? '#f0a830' : isMe ? '#3a7d44' : '#b8dda8', fontSize: i < 3 ? 16 : 13, width: 20, textAlign: 'center', fontWeight: isMe || i < 3 ? 600 : 400 }}>{i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</div>
               <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#edf7e8', border: '0.5px solid #c8e8bc', display: 'flex', alignItems: 'center', justifyContent: 'center', ...textGreen, fontSize: u.avatar ? 18 : 12, fontWeight: 500 }}>
                 {u.avatar || (u.username ?? 'U').slice(0, 2).toUpperCase()}
               </div>
@@ -854,7 +911,13 @@ export default function Home() {
                 <div style={{ ...textPrimary, fontSize: 13 }}>{u.username ?? t.anon}</div>
                 <div style={pill}>{getTitle(u.arigatou_count ?? 0)}</div>
               </div>
-              <div style={{ ...textGreen, fontSize: 12, fontFamily: 'monospace' }}>{u.rseed.toFixed(3)}</div>
+              <div style={{ ...textGreen, fontSize: 13, fontFamily: 'monospace', fontWeight: 500, minWidth: 48, textAlign: 'right' }}>
+                {rankBy === 'rseed' ? u.rseed.toFixed(3) : `💚 ${u.arigatou_count ?? 0}`}
+              </div>
+              {!isMe && u.username && (
+                <button onClick={() => { setArigatouTarget(u.username); setTab('arigatou') }} aria-label="thank"
+                  style={{ flexShrink: 0, background: '#edf7e8', border: '0.5px solid #b8dda8', borderRadius: 16, padding: '5px 10px', fontSize: 12, cursor: 'pointer' }}>💚</button>
+              )}
             </div>
             )
           })}
@@ -1054,6 +1117,13 @@ export default function Home() {
                 </button>
               ))}
             </div>
+          </div>
+          <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '14px 16px', marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ ...textGreen, fontSize: 13, fontWeight: 500 }}>{soundOn ? '🔊' : '🔇'} {lang === 'ja' ? 'サウンド' : 'Sound'}</div>
+            <button onClick={() => { const v = !soundOn; setSoundOn(v); localStorage.setItem('rseed_sound', v ? 'on' : 'off'); if (v) playTone([880, 1175]) }}
+              style={{ width: 48, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer', background: soundOn ? '#3a7d44' : '#c8e8bc', position: 'relative', transition: 'background 0.2s' }}>
+              <span style={{ position: 'absolute', top: 3, left: soundOn ? 23 : 3, width: 22, height: 22, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+            </button>
           </div>
           <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '16px', marginTop: 14 }}>
             <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 10 }}>{t.badgesTitle}</div>
