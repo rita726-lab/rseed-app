@@ -16,6 +16,7 @@ type RankUser = {
   rseed: number
   arigatou_count: number
   avatar?: string
+  weekly?: number
 }
 
 type HistoryItem = {
@@ -103,7 +104,7 @@ const STR = {
     badgesTitle: '🏅 実績バッジ', badgeLocked: '未獲得',
     totalSupply: '🌍 みんなで育てたRITATASEED', supplyNote: '上限2,000万枚に到達したら新規発行は止まるよ。みんなで少しずつ育てていこう🌱',
     poolTitle: '🤝 みんなのプール', poolNote: (n: string) => `使われたRSEEDは燃えずにここへ集まるよ。${n}枚たまったら全員に分配🌱`,
-    rankByRseed: '💰 RSEED', rankByArigatou: '💚 ありがとう', thankBtn: '💚 ありがとう', setNameFirst: 'まずは名前を決めよう！', setNameDesc: 'ランキングやありがとうで表示される名前だよ', goSetName: '✏️ 名前を決める',
+    rankByRseed: '💰 RSEED', rankByArigatou: '💚 ありがとう', rankByWeekly: '🔥 今週', weeklyEmpty: '今週はまだありがとうがないよ。最初の一人になろう🌱', thankBtn: '💚 ありがとう', setNameFirst: 'まずは名前を決めよう！', setNameDesc: 'ランキングやありがとうで表示される名前だよ', goSetName: '✏️ 名前を決める',
     shareUnlocked: (n: string) => `🌱 RSEEDで「${n}」NFTを手に入れた！感謝が価値になる経済圏 #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 RSEEDで「${n}」NFTを目指してるよ！感謝が価値になる経済圏 #RSEED #RITATASEED`,
   },
@@ -140,7 +141,7 @@ const STR = {
     badgesTitle: '🏅 Achievements', badgeLocked: 'Locked',
     totalSupply: '🌍 RITATASEED grown together', supplyNote: 'New minting stops once it reaches the 20M cap. Let\'s grow it together 🌱',
     poolTitle: '🤝 Community Pool', poolNote: (n: string) => `Used RSEED isn't burned — it collects here. At ${n} it's shared with everyone 🌱`,
-    rankByRseed: '💰 RSEED', rankByArigatou: '💚 Arigatou', thankBtn: '💚 Thank', setNameFirst: 'Set your name first!', setNameDesc: 'Your display name in ranking and arigatou', goSetName: '✏️ Set name',
+    rankByRseed: '💰 RSEED', rankByArigatou: '💚 Arigatou', rankByWeekly: '🔥 This Week', weeklyEmpty: 'No arigatou yet this week. Be the first 🌱', thankBtn: '💚 Thank', setNameFirst: 'Set your name first!', setNameDesc: 'Your display name in ranking and arigatou', goSetName: '✏️ Set name',
     shareUnlocked: (n: string) => `🌱 I got the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
     shareLocked: (n: string) => `🌱 I'm aiming for the "${n}" NFT on RSEED! A gratitude economy where thanks has value. #RSEED #RITATASEED`,
   },
@@ -274,7 +275,7 @@ export default function Home() {
   const [claimingDaily, setClaimingDaily] = useState(false)
   const [totalSupply, setTotalSupply] = useState(0)
   const [poolAmount, setPoolAmount] = useState(0)
-  const [rankBy, setRankBy] = useState<'rseed' | 'arigatou'>('rseed')
+  const [rankBy, setRankBy] = useState<'rseed' | 'arigatou' | 'weekly'>('rseed')
   const [soundOn, setSoundOn] = useState(true)
   const [lang, setLang] = useState<Lang>('ja')
   const [showNotif, setShowNotif] = useState(false)
@@ -285,6 +286,7 @@ export default function Home() {
   const [magicSent, setMagicSent] = useState(false)
   const [loading, setLoading] = useState(true)
   const [ranking, setRanking] = useState<RankUser[]>([])
+  const [weeklyRanking, setWeeklyRanking] = useState<RankUser[]>([])
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [arigatouTarget, setArigatouTarget] = useState('')
   const [arigatouAmount, setArigatouAmount] = useState(1)
@@ -316,7 +318,7 @@ export default function Home() {
       const u = session?.user ?? null
       setUser(u)
       if (u) {
-        await loadUser(u.id); await loadRanking(); await loadTotalSupply(); await loadPool()
+        await loadUser(u.id); await loadRanking(); await loadWeekly(); await loadTotalSupply(); await loadPool()
         if (!localStorage.getItem('rseed_tutorial_seen')) setShowTutorial(true)
       }
       setLoading(false)
@@ -453,6 +455,30 @@ export default function Home() {
       ? withAvatar.data
       : (await supabase.from('users').select('id, username, rseed, arigatou_count').neq('id', TREASURY_ID).order('rseed', { ascending: false }).limit(50)).data
     setRanking(data ?? [])
+  }
+
+  // 週間ランキング：直近7日間で「もらったありがとう」の数を集計する。
+  // くじの当たりも history に arigatou_received として入るが、本物のありがとうだけ
+  // from_username（送り主名）が付くので、それで区別して数える。
+  const loadWeekly = async () => {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    let rows: { user_id: string }[] = []
+    const rich = await supabase.from('history').select('user_id, from_username').eq('type', 'arigatou_received').gte('created_at', since)
+    if (rich.data) {
+      rows = rich.data.filter(r => r.from_username) // 本物のありがとうだけ（くじは除外）
+    } else {
+      // from_username 列が無い古いDBでも動くフォールバック（くじも含むが履歴は数える）
+      const plain = await supabase.from('history').select('user_id').eq('type', 'arigatou_received').gte('created_at', since)
+      rows = plain.data ?? []
+    }
+    const counts: Record<string, number> = {}
+    for (const r of rows) counts[r.user_id] = (counts[r.user_id] ?? 0) + 1
+    const ids = Object.keys(counts).filter(id => id !== TREASURY_ID)
+    if (ids.length === 0) { setWeeklyRanking([]); return }
+    const { data: us } = await supabase.from('users').select('id, username, rseed, arigatou_count, avatar').in('id', ids)
+    const list: RankUser[] = (us ?? []).map(u => ({ ...u, weekly: counts[u.id] ?? 0 }))
+    list.sort((a, b) => (b.weekly ?? 0) - (a.weekly ?? 0))
+    setWeeklyRanking(list)
   }
 
   const loadTotalSupply = async () => {
@@ -892,14 +918,20 @@ export default function Home() {
           <Tree style={{ position: 'absolute', right: -8, top: 10 }} />
           <div style={{ ...textMuted, fontSize: 10, letterSpacing: 1.5, marginBottom: 10, fontWeight: 500 }}>RANKING</div>
           <div style={{ display: 'flex', gap: 6, marginBottom: 12, background: '#f7fbf4', borderRadius: 12, padding: 4 }}>
-            {([['rseed', t.rankByRseed], ['arigatou', t.rankByArigatou]] as const).map(([val, label]) => (
-              <button key={val} onClick={() => setRankBy(val)}
+            {([['rseed', t.rankByRseed], ['arigatou', t.rankByArigatou], ['weekly', t.rankByWeekly]] as const).map(([val, label]) => (
+              <button key={val} onClick={() => { setRankBy(val); if (val === 'weekly') loadWeekly() }}
                 style={{ flex: 1, padding: '8px 0', borderRadius: 9, fontSize: 12, cursor: 'pointer', border: rankBy === val ? '0.5px solid #c8e8bc' : 'none', background: rankBy === val ? '#fff' : 'transparent', color: rankBy === val ? '#3a7d44' : '#8ab88a', fontWeight: rankBy === val ? 500 : 400 }}>
                 {label}
               </button>
             ))}
           </div>
-          {[...ranking].sort((a, b) => rankBy === 'rseed' ? b.rseed - a.rseed : (b.arigatou_count ?? 0) - (a.arigatou_count ?? 0)).slice(0, 10).map((u, i) => {
+          {rankBy === 'weekly' && weeklyRanking.length === 0 && (
+            <div style={{ ...textMuted, fontSize: 12, textAlign: 'center', padding: '24px 0' }}>{t.weeklyEmpty}</div>
+          )}
+          {(rankBy === 'weekly'
+            ? weeklyRanking
+            : [...ranking].sort((a, b) => rankBy === 'rseed' ? b.rseed - a.rseed : (b.arigatou_count ?? 0) - (a.arigatou_count ?? 0))
+          ).slice(0, 10).map((u, i) => {
             const isMe = u.id === user.id
             return (
             <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', margin: isMe ? '2px -10px' : '2px 0', borderRadius: isMe ? 12 : 0, background: isMe ? '#edf7e8' : 'transparent', border: isMe ? '0.5px solid #b8dda8' : 'none', borderBottom: isMe ? '0.5px solid #b8dda8' : '0.5px solid #e8f4e0' }}>
@@ -912,7 +944,7 @@ export default function Home() {
                 <div style={pill}>{getTitle(u.arigatou_count ?? 0)}</div>
               </div>
               <div style={{ ...textGreen, fontSize: 13, fontFamily: 'monospace', fontWeight: 500, minWidth: 48, textAlign: 'right' }}>
-                {rankBy === 'rseed' ? u.rseed.toFixed(3) : `💚 ${u.arigatou_count ?? 0}`}
+                {rankBy === 'rseed' ? u.rseed.toFixed(3) : rankBy === 'weekly' ? `🔥 ${u.weekly ?? 0}` : `💚 ${u.arigatou_count ?? 0}`}
               </div>
               {!isMe && u.username && (
                 <button onClick={() => { setArigatouTarget(u.username); setTab('arigatou') }} aria-label="thank"
