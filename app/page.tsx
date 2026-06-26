@@ -20,7 +20,7 @@ type RankUser = {
 }
 
 type HistoryItem = {
-  type: 'mine' | 'arigatou_sent' | 'arigatou_received' | 'daily'
+  type: 'mine' | 'arigatou_sent' | 'arigatou_received' | 'daily' | 'redeem'
   amount: number
   created_at: string
   from_username?: string
@@ -41,6 +41,14 @@ const AVATAR_CHOICES = ['🌱', '🌿', '🌸', '🌳', '🍀', '🌻', '🐰', 
 const DAILY_AMOUNT = 0.005
 const MAX_SUPPLY = 20_000_000
 const TREASURY_ID = '00000000-0000-0000-0000-000000000000'
+
+// 引換コード：ここに「コード: もらえるRSEED」を足すだけで増やせる。
+// 入力は大文字小文字どちらでもOK（内部で大文字に揃えて照合する）。
+const REDEEM_CODES: Record<string, number> = {
+  WELCOME: 1,
+  RSEED2026: 5,
+  'RITATASEED1000!': 1000, // 特別コード（ritataseed1000!）：1人1回まで1000 RSEED
+}
 const DISTRIBUTE_THRESHOLD = 10
 
 type BadgeStats = { rseed: number; arigatouCount: number; nftCount: number; mined: boolean }
@@ -90,6 +98,7 @@ const STR = {
     profile: 'PROFILE', noName: '名前未設定', arigatouTotal: (n: number) => `ありがとう累計 ${n}回`, statBalance: 'RSEED残高', statArigatou: 'ありがとう数', statNft: 'NFT保有',
     nextRank: (t: string) => `次の称号まで（${t}）`, arigatouUnit: 'ありがとう', usernameCard: '👤 ユーザー名', usernameDesc: 'ランキングやありがとうで表示される名前だよ',
     namePh: '名前を入力（2〜16文字）', save: '保存', avatarCard: '🎨 アバター', avatarDesc: '好きなアイコンを選んでね', joinDiscord: 'Discordコミュニティに参加', logout: 'ログアウト',
+    redeemCard: '🎁 コードを入力', redeemDesc: 'イベントやSNSで配られた合言葉を入れるとRSEEDがもらえるよ', redeemPh: 'コードを入力', redeemBtn: '引換', redeem: 'コード引換', redeemInvalid: '⚠️ このコードは使えないよ', redeemUsed: 'このコードはもう使ったよ', redeemOk: (n: string) => `🎁 +${n} RSEED もらった！`,
     kujiHead: 'ARIGATOU KUJI', kujiTitle: 'ありがとうくじ', kujiDesc1: '大当たり 1%（100倍）/ 中当たり 9%（10倍）', kujiDesc2: 'ハズレ 90%（10%返還）', betLabel: '賭けるRSEED（0.001〜10）',
     balance: (b: string) => `残高：${b} RSEED`, drawing: '🎋 引いてる...', draw: '🎋 くじを引く', bigWin: '大当たり！！！', midWin: '中当たり！', miss: 'ハズレ...', wonAmt: (p: string) => `${p} RSEED 獲得`, again: 'もう一回',
     nameMin: '2文字以上にしてね', nameMax: '16文字以内にしてね', nameInvalid: '使えない文字が含まれてるよ', nameTaken: 'この名前はもう使われてるよ', nameSaveFail: '保存に失敗しました',
@@ -127,6 +136,7 @@ const STR = {
     profile: 'PROFILE', noName: 'No name set', arigatouTotal: (n: number) => `${n} arigatou received`, statBalance: 'Balance', statArigatou: 'Arigatou', statNft: 'NFTs',
     nextRank: (t: string) => `Next rank (${t})`, arigatouUnit: 'arigatou', usernameCard: '👤 Username', usernameDesc: 'Your display name in ranking and arigatou',
     namePh: 'Enter name (2-16 chars)', save: 'Save', avatarCard: '🎨 Avatar', avatarDesc: 'Pick your favorite icon', joinDiscord: 'Join Discord community', logout: 'Log out',
+    redeemCard: '🎁 Enter a code', redeemDesc: 'Enter a code shared at events or on social media to get RSEED', redeemPh: 'Enter code', redeemBtn: 'Redeem', redeem: 'Code redeem', redeemInvalid: '⚠️ That code isn\'t valid', redeemUsed: 'You already used this code', redeemOk: (n: string) => `🎁 +${n} RSEED received!`,
     kujiHead: 'ARIGATOU KUJI', kujiTitle: 'Arigatou Lottery', kujiDesc1: 'Jackpot 1% (100x) / Win 9% (10x)', kujiDesc2: 'Miss 90% (10% back)', betLabel: 'Bet RSEED (0.001-10)',
     balance: (b: string) => `Balance: ${b} RSEED`, drawing: '🎋 Drawing...', draw: '🎋 Draw', bigWin: 'JACKPOT!!!', midWin: 'You win!', miss: 'Miss...', wonAmt: (p: string) => `${p} RSEED won`, again: 'Again',
     nameMin: 'At least 2 characters', nameMax: '16 characters or fewer', nameInvalid: 'Contains invalid characters', nameTaken: 'This name is already taken', nameSaveFail: 'Failed to save',
@@ -291,6 +301,8 @@ export default function Home() {
   const [arigatouTarget, setArigatouTarget] = useState('')
   const [arigatouAmount, setArigatouAmount] = useState(1)
   const [arigatouMessage, setArigatouMessage] = useState('')
+  const [redeemInput, setRedeemInput] = useState('')
+  const [redeeming, setRedeeming] = useState(false)
   const [sendingArigatou, setSendingArigatou] = useState(false)
   const [toast, setToast] = useState('')
   const [walletFilter, setWalletFilter] = useState<'all' | 'mine' | 'sent' | 'received'>('all')
@@ -560,6 +572,34 @@ export default function Home() {
       showToast(t.saveFailed + error.message)
     }
     setClaimingDaily(false)
+  }
+
+  // 引換コード：合言葉を入れると未発行プールからRSEEDがもらえる。
+  // 同じコードの二重取りは history（type='redeem' + message=コード）で防ぐ。
+  const handleRedeem = async () => {
+    if (!user || redeeming) return
+    const code = redeemInput.trim().toUpperCase()
+    if (!code) return
+    setRedeeming(true)
+    const reward = REDEEM_CODES[code]
+    if (!reward) { showToast(t.redeemInvalid); setRedeeming(false); return }
+    // すでに同じコードを引換済みか確認
+    const { data: used } = await supabase.from('history').select('type').eq('user_id', user.id).eq('type', 'redeem').eq('message', code).limit(1)
+    if (used && used.length > 0) { showToast(t.redeemUsed); setRedeeming(false); return }
+    const newBalance = rseed + reward
+    await supabase.from('users').update({ rseed: newBalance }).eq('id', user.id)
+    const { error: histErr } = await supabase.from('history').insert({ user_id: user.id, type: 'redeem', amount: reward, message: code })
+    if (histErr) {
+      // message列が使えない環境でも残高と履歴は残す
+      await supabase.from('history').insert({ user_id: user.id, type: 'redeem', amount: reward })
+    }
+    setRseed(newBalance)
+    setRedeemInput('')
+    setFireworks(true)
+    playSound('win')
+    showToast(t.redeemOk(reward.toFixed(3)))
+    await loadTotalSupply()
+    setRedeeming(false)
   }
 
   const handleSendArigatou = async () => {
@@ -899,7 +939,7 @@ export default function Home() {
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < history.length - 1 ? '0.5px solid #e8f4e0' : 'none' }}>
                 <div>
                   <div style={{ ...textPrimary, fontSize: 13 }}>
-                    {h.type === 'mine' ? `⛏️ ${t.mining}` : h.type === 'daily' ? `🎁 ${t.daily}` : h.type === 'arigatou_sent' ? `💚 ${t.arigatouSent}` : `🌱 ${t.arigatouReceived}`}
+                    {h.type === 'mine' ? `⛏️ ${t.mining}` : h.type === 'daily' ? `🎁 ${t.daily}` : h.type === 'redeem' ? `🎁 ${t.redeem}` : h.type === 'arigatou_sent' ? `💚 ${t.arigatouSent}` : `🌱 ${t.arigatouReceived}`}
                   </div>
                   {h.message && <div style={{ ...textGreen, fontSize: 11, marginTop: 1 }}>「{h.message}」</div>}
                   <div style={{ ...textMuted, fontSize: 11 }}>{timeAgo(h.created_at, lang)}</div>
@@ -1064,11 +1104,11 @@ export default function Home() {
             }).map((h, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderBottom: '0.5px solid #f0f7ec' }}>
                 <div style={{ width: 34, height: 34, borderRadius: '50%', background: h.type === 'arigatou_sent' ? '#fff0f0' : '#edf7e8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
-                  {h.type === 'mine' ? '⛏️' : h.type === 'daily' ? '🎁' : h.type === 'arigatou_sent' ? '💸' : '💚'}
+                  {h.type === 'mine' ? '⛏️' : h.type === 'daily' ? '🎁' : h.type === 'redeem' ? '🎁' : h.type === 'arigatou_sent' ? '💸' : '💚'}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ ...textPrimary, fontSize: 13, fontWeight: 500 }}>
-                    {h.type === 'mine' ? t.mining : h.type === 'daily' ? t.daily : h.type === 'arigatou_sent' ? t.arigatouSent : t.arigatouReceived}
+                    {h.type === 'mine' ? t.mining : h.type === 'daily' ? t.daily : h.type === 'redeem' ? t.redeem : h.type === 'arigatou_sent' ? t.arigatouSent : t.arigatouReceived}
                   </div>
                   {h.message && <div style={{ ...textGreen, fontSize: 11 }}>「{h.message}」</div>}
                   <div style={{ color: '#a0c4a0', fontSize: 10, marginTop: 1 }}>{timeAgo(h.created_at, lang)}</div>
@@ -1137,6 +1177,18 @@ export default function Home() {
               </button>
             </div>
             {nameError && <p style={{ color: '#e24b4a', fontSize: 11, marginTop: 8 }}>{nameError}</p>}
+          </div>
+          <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '16px', marginTop: 14 }}>
+            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 4 }}>{t.redeemCard}</div>
+            <div style={{ ...textMuted, fontSize: 10, marginBottom: 10 }}>{t.redeemDesc}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input type="text" placeholder={t.redeemPh} value={redeemInput} onChange={e => setRedeemInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRedeem()}
+                style={{ flex: 1, padding: '11px 14px', borderRadius: 12, border: '0.5px solid #c8e8bc', background: '#f7fbf4', color: '#2d4a2d', fontSize: 14, outline: 'none', minWidth: 0 }} />
+              <button onClick={handleRedeem} disabled={redeeming || redeemInput.trim() === ''}
+                style={{ padding: '0 18px', borderRadius: 12, background: (redeeming || redeemInput.trim() === '') ? '#c8e8bc' : '#3a7d44', color: '#fff', fontWeight: 500, fontSize: 13, border: 'none', cursor: (redeeming || redeemInput.trim() === '') ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>
+                {redeeming ? '...' : t.redeemBtn}
+              </button>
+            </div>
           </div>
           <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '16px', marginTop: 14 }}>
             <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 4 }}>{t.avatarCard}</div>
