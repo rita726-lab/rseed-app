@@ -49,6 +49,10 @@ const REDEEM_CODES: Record<string, number> = {
   RSEED2026: 5,
   'RITATASEED1000!': 1000, // 特別コード（ritataseed1000!）：1人1回まで1000 RSEED
 }
+// 全ユーザー合計での引換回数の上限（先着順）。ここに無いコードは人数無制限。
+const REDEEM_LIMITS: Record<string, number> = {
+  'RITATASEED1000!': 100, // 先着100名まで
+}
 const DISTRIBUTE_THRESHOLD = 10
 
 type BadgeStats = { rseed: number; arigatouCount: number; nftCount: number; mined: boolean }
@@ -98,7 +102,7 @@ const STR = {
     profile: 'PROFILE', noName: '名前未設定', arigatouTotal: (n: number) => `ありがとう累計 ${n}回`, statBalance: 'RSEED残高', statArigatou: 'ありがとう数', statNft: 'NFT保有',
     nextRank: (t: string) => `次の称号まで（${t}）`, arigatouUnit: 'ありがとう', usernameCard: '👤 ユーザー名', usernameDesc: 'ランキングやありがとうで表示される名前だよ',
     namePh: '名前を入力（2〜16文字）', save: '保存', avatarCard: '🎨 アバター', avatarDesc: '好きなアイコンを選んでね', joinDiscord: 'Discordコミュニティに参加', logout: 'ログアウト',
-    redeemCard: '🎁 コードを入力', redeemDesc: 'イベントやSNSで配られた合言葉を入れるとRSEEDがもらえるよ', redeemPh: 'コードを入力', redeemBtn: '引換', redeem: 'コード引換', redeemInvalid: '⚠️ このコードは使えないよ', redeemUsed: 'このコードはもう使ったよ', redeemOk: (n: string) => `🎁 +${n} RSEED もらった！`,
+    redeemCard: '🎁 コードを入力', redeemDesc: 'イベントやSNSで配られた合言葉を入れるとRSEEDがもらえるよ', redeemPh: 'コードを入力', redeemBtn: '引換', redeem: 'コード引換', redeemInvalid: '⚠️ このコードは使えないよ', redeemUsed: 'このコードはもう使ったよ', redeemFull: '🙏 ごめん、先着100名に達したよ', redeemOk: (n: string) => `🎁 +${n} RSEED もらった！`,
     kujiHead: 'ARIGATOU KUJI', kujiTitle: 'ありがとうくじ', kujiDesc1: '大当たり 1%（100倍）/ 中当たり 9%（10倍）', kujiDesc2: 'ハズレ 90%（10%返還）', betLabel: '賭けるRSEED（0.001〜10）',
     balance: (b: string) => `残高：${b} RSEED`, drawing: '🎋 引いてる...', draw: '🎋 くじを引く', bigWin: '大当たり！！！', midWin: '中当たり！', miss: 'ハズレ...', wonAmt: (p: string) => `${p} RSEED 獲得`, again: 'もう一回',
     nameMin: '2文字以上にしてね', nameMax: '16文字以内にしてね', nameInvalid: '使えない文字が含まれてるよ', nameTaken: 'この名前はもう使われてるよ', nameSaveFail: '保存に失敗しました',
@@ -136,7 +140,7 @@ const STR = {
     profile: 'PROFILE', noName: 'No name set', arigatouTotal: (n: number) => `${n} arigatou received`, statBalance: 'Balance', statArigatou: 'Arigatou', statNft: 'NFTs',
     nextRank: (t: string) => `Next rank (${t})`, arigatouUnit: 'arigatou', usernameCard: '👤 Username', usernameDesc: 'Your display name in ranking and arigatou',
     namePh: 'Enter name (2-16 chars)', save: 'Save', avatarCard: '🎨 Avatar', avatarDesc: 'Pick your favorite icon', joinDiscord: 'Join Discord community', logout: 'Log out',
-    redeemCard: '🎁 Enter a code', redeemDesc: 'Enter a code shared at events or on social media to get RSEED', redeemPh: 'Enter code', redeemBtn: 'Redeem', redeem: 'Code redeem', redeemInvalid: '⚠️ That code isn\'t valid', redeemUsed: 'You already used this code', redeemOk: (n: string) => `🎁 +${n} RSEED received!`,
+    redeemCard: '🎁 Enter a code', redeemDesc: 'Enter a code shared at events or on social media to get RSEED', redeemPh: 'Enter code', redeemBtn: 'Redeem', redeem: 'Code redeem', redeemInvalid: '⚠️ That code isn\'t valid', redeemUsed: 'You already used this code', redeemFull: '🙏 Sorry, the first 100 spots are gone', redeemOk: (n: string) => `🎁 +${n} RSEED received!`,
     kujiHead: 'ARIGATOU KUJI', kujiTitle: 'Arigatou Lottery', kujiDesc1: 'Jackpot 1% (100x) / Win 9% (10x)', kujiDesc2: 'Miss 90% (10% back)', betLabel: 'Bet RSEED (0.001-10)',
     balance: (b: string) => `Balance: ${b} RSEED`, drawing: '🎋 Drawing...', draw: '🎋 Draw', bigWin: 'JACKPOT!!!', midWin: 'You win!', miss: 'Miss...', wonAmt: (p: string) => `${p} RSEED won`, again: 'Again',
     nameMin: 'At least 2 characters', nameMax: '16 characters or fewer', nameInvalid: 'Contains invalid characters', nameTaken: 'This name is already taken', nameSaveFail: 'Failed to save',
@@ -586,6 +590,12 @@ export default function Home() {
     // すでに同じコードを引換済みか確認
     const { data: used } = await supabase.from('history').select('type').eq('user_id', user.id).eq('type', 'redeem').eq('message', code).limit(1)
     if (used && used.length > 0) { showToast(t.redeemUsed); setRedeeming(false); return }
+    // 先着上限のあるコードは、全ユーザー合計の引換回数をチェック
+    const limit = REDEEM_LIMITS[code]
+    if (limit) {
+      const { count } = await supabase.from('history').select('*', { count: 'exact', head: true }).eq('type', 'redeem').eq('message', code)
+      if ((count ?? 0) >= limit) { showToast(t.redeemFull); setRedeeming(false); return }
+    }
     const newBalance = rseed + reward
     await supabase.from('users').update({ rseed: newBalance }).eq('id', user.id)
     const { error: histErr } = await supabase.from('history').insert({ user_id: user.id, type: 'redeem', amount: reward, message: code })
