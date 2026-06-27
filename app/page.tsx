@@ -38,6 +38,7 @@ const TITLE_ORDER = ['SEED', 'SPROUT', 'BLOOM', 'LEGEND']
 
 const DISCORD_INVITE = 'https://discord.gg/VkPnNunw'
 const AVATAR_CHOICES = ['🌱', '🌿', '🌸', '🌳', '🍀', '🌻', '🐰', '🐿️', '🦊', '🐸', '🦋', '🐝']
+const ARIGATOU_STAMPS = ['🌱', '💚', '🌸', '🙏', '🎉', '✨', '🌳', '🦋', '🥰', '👏']
 const DAILY_AMOUNT = 0.005
 const MAX_SUPPLY = 20_000_000
 const TREASURY_ID = '00000000-0000-0000-0000-000000000000'
@@ -102,7 +103,8 @@ const STR = {
     profile: 'PROFILE', noName: '名前未設定', arigatouTotal: (n: number) => `ありがとう累計 ${n}回`, statBalance: 'RSEED残高', statArigatou: 'ありがとう数', statNft: 'NFT保有',
     nextRank: (t: string) => `次の称号まで（${t}）`, arigatouUnit: 'ありがとう', usernameCard: '👤 ユーザー名', usernameDesc: 'ランキングやありがとうで表示される名前だよ',
     namePh: '名前を入力（2〜16文字）', save: '保存', avatarCard: '🎨 アバター', avatarDesc: '好きなアイコンを選んでね', joinDiscord: 'Discordコミュニティに参加', logout: 'ログアウト',
-    redeemCard: '🎁 コードを入力', redeemDesc: 'イベントやSNSで配られた合言葉を入れるとRSEEDがもらえるよ', redeemPh: 'コードを入力', redeemBtn: '引換', redeem: 'コード引換', redeemInvalid: '⚠️ このコードは使えないよ', redeemUsed: 'このコードはもう使ったよ', redeemFull: '🙏 ごめん、先着100名に達したよ', redeemOk: (n: string) => `🎁 +${n} RSEED もらった！`,
+    redeemCard: '🎁 コードを入力', redeemDesc: 'イベントやSNSで配られた合言葉を入れるとRSEEDがもらえるよ', redeemPh: 'コードを入力', redeemBtn: '引換', redeem: 'コード引換', redeemInvalid: '⚠️ このコードは使えないよ', redeemUsed: 'このコードはもう使ったよ', redeemFull: '🙏 ごめん、先着100名に達したよ', redeemRemaining: (n: number) => `残り${n}名`, redeemClosed: '受付終了', redeemOk: (n: string) => `🎁 +${n} RSEED もらった！`,
+    shareProfileCard: '🔗 公開ページをシェア', shareProfileDesc: '自分のページをSNSや友達に見せられるよ', shareProfileBtn: '🔗 リンクをコピー', profileLinkCopied: '🔗 リンクをコピーしたよ！',
     kujiHead: 'ARIGATOU KUJI', kujiTitle: 'ありがとうくじ', kujiDesc1: '大当たり 1%（100倍）/ 中当たり 9%（10倍）', kujiDesc2: 'ハズレ 90%（10%返還）', betLabel: '賭けるRSEED（0.001〜10）',
     balance: (b: string) => `残高：${b} RSEED`, drawing: '🎋 引いてる...', draw: '🎋 くじを引く', bigWin: '大当たり！！！', midWin: '中当たり！', miss: 'ハズレ...', wonAmt: (p: string) => `${p} RSEED 獲得`, again: 'もう一回',
     nameMin: '2文字以上にしてね', nameMax: '16文字以内にしてね', nameInvalid: '使えない文字が含まれてるよ', nameTaken: 'この名前はもう使われてるよ', nameSaveFail: '保存に失敗しました',
@@ -140,7 +142,8 @@ const STR = {
     profile: 'PROFILE', noName: 'No name set', arigatouTotal: (n: number) => `${n} arigatou received`, statBalance: 'Balance', statArigatou: 'Arigatou', statNft: 'NFTs',
     nextRank: (t: string) => `Next rank (${t})`, arigatouUnit: 'arigatou', usernameCard: '👤 Username', usernameDesc: 'Your display name in ranking and arigatou',
     namePh: 'Enter name (2-16 chars)', save: 'Save', avatarCard: '🎨 Avatar', avatarDesc: 'Pick your favorite icon', joinDiscord: 'Join Discord community', logout: 'Log out',
-    redeemCard: '🎁 Enter a code', redeemDesc: 'Enter a code shared at events or on social media to get RSEED', redeemPh: 'Enter code', redeemBtn: 'Redeem', redeem: 'Code redeem', redeemInvalid: '⚠️ That code isn\'t valid', redeemUsed: 'You already used this code', redeemFull: '🙏 Sorry, the first 100 spots are gone', redeemOk: (n: string) => `🎁 +${n} RSEED received!`,
+    redeemCard: '🎁 Enter a code', redeemDesc: 'Enter a code shared at events or on social media to get RSEED', redeemPh: 'Enter code', redeemBtn: 'Redeem', redeem: 'Code redeem', redeemInvalid: '⚠️ That code isn\'t valid', redeemUsed: 'You already used this code', redeemFull: '🙏 Sorry, the first 100 spots are gone', redeemRemaining: (n: number) => `${n} spots left`, redeemClosed: 'Closed', redeemOk: (n: string) => `🎁 +${n} RSEED received!`,
+    shareProfileCard: '🔗 Share your page', shareProfileDesc: 'Show your page to friends or on social media', shareProfileBtn: '🔗 Copy link', profileLinkCopied: '🔗 Link copied!',
     kujiHead: 'ARIGATOU KUJI', kujiTitle: 'Arigatou Lottery', kujiDesc1: 'Jackpot 1% (100x) / Win 9% (10x)', kujiDesc2: 'Miss 90% (10% back)', betLabel: 'Bet RSEED (0.001-10)',
     balance: (b: string) => `Balance: ${b} RSEED`, drawing: '🎋 Drawing...', draw: '🎋 Draw', bigWin: 'JACKPOT!!!', midWin: 'You win!', miss: 'Miss...', wonAmt: (p: string) => `${p} RSEED won`, again: 'Again',
     nameMin: 'At least 2 characters', nameMax: '16 characters or fewer', nameInvalid: 'Contains invalid characters', nameTaken: 'This name is already taken', nameSaveFail: 'Failed to save',
@@ -307,6 +310,7 @@ export default function Home() {
   const [arigatouMessage, setArigatouMessage] = useState('')
   const [redeemInput, setRedeemInput] = useState('')
   const [redeeming, setRedeeming] = useState(false)
+  const [limitRemaining, setLimitRemaining] = useState<Record<string, number>>({})
   const [sendingArigatou, setSendingArigatou] = useState(false)
   const [toast, setToast] = useState('')
   const [walletFilter, setWalletFilter] = useState<'all' | 'mine' | 'sent' | 'received'>('all')
@@ -334,7 +338,7 @@ export default function Home() {
       const u = session?.user ?? null
       setUser(u)
       if (u) {
-        await loadUser(u.id); await loadRanking(); await loadWeekly(); await loadTotalSupply(); await loadPool()
+        await loadUser(u.id); await loadRanking(); await loadWeekly(); await loadTotalSupply(); await loadPool(); await loadRedeemRemaining()
         if (!localStorage.getItem('rseed_tutorial_seen')) setShowTutorial(true)
       }
       setLoading(false)
@@ -609,7 +613,32 @@ export default function Home() {
     playSound('win')
     showToast(t.redeemOk(reward.toFixed(3)))
     await loadTotalSupply()
+    await loadRedeemRemaining()
     setRedeeming(false)
+  }
+
+  // 公開プロフィールページのURLを共有（対応端末はネイティブ共有、無ければコピー）
+  const handleShareProfile = async () => {
+    if (!username) { showToast(t.setNameFirst); return }
+    const url = `${window.location.origin}/u/${encodeURIComponent(username)}`
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ title: 'RSEED', url })
+      } else {
+        await navigator.clipboard.writeText(url)
+        showToast(t.profileLinkCopied)
+      }
+    } catch { /* キャンセル等は無視 */ }
+  }
+
+  // 先着上限つきコードの「残り枠」を集計する
+  const loadRedeemRemaining = async () => {
+    const out: Record<string, number> = {}
+    for (const code of Object.keys(REDEEM_LIMITS)) {
+      const { count } = await supabase.from('history').select('*', { count: 'exact', head: true }).eq('type', 'redeem').eq('message', code)
+      out[code] = Math.max(REDEEM_LIMITS[code] - (count ?? 0), 0)
+    }
+    setLimitRemaining(out)
   }
 
   const handleSendArigatou = async () => {
@@ -1028,6 +1057,14 @@ export default function Home() {
             </div>
             <div>
               <div style={{ ...textMuted, fontSize: 11, marginBottom: 6 }}>{t.msgLabel}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {ARIGATOU_STAMPS.map(s => (
+                  <button key={s} type="button" onClick={() => setArigatouMessage(m => (m + s).slice(0, 50))}
+                    style={{ width: 34, height: 34, borderRadius: '50%', fontSize: 17, cursor: 'pointer', background: '#f7fbf4', border: '0.5px solid #c8e8bc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
               <input type="text" maxLength={50} placeholder={t.msgPh} value={arigatouMessage} onChange={e => setArigatouMessage(e.target.value)}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '0.5px solid #c8e8bc', ...G, ...textPrimary, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
             </div>
@@ -1191,6 +1228,14 @@ export default function Home() {
           <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '16px', marginTop: 14 }}>
             <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 4 }}>{t.redeemCard}</div>
             <div style={{ ...textMuted, fontSize: 10, marginBottom: 10 }}>{t.redeemDesc}</div>
+            {Object.keys(REDEEM_LIMITS).map(code => {
+              const left = limitRemaining[code] ?? REDEEM_LIMITS[code]
+              return (
+                <div key={code} style={{ fontSize: 11, marginBottom: 8, color: left > 0 ? '#3a7d44' : '#a0c4a0', fontWeight: 500 }}>
+                  🔥 {code.toLowerCase()}　{left > 0 ? t.redeemRemaining(left) : t.redeemClosed}
+                </div>
+              )
+            })}
             <div style={{ display: 'flex', gap: 8 }}>
               <input type="text" placeholder={t.redeemPh} value={redeemInput} onChange={e => setRedeemInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRedeem()}
                 style={{ flex: 1, padding: '11px 14px', borderRadius: 12, border: '0.5px solid #c8e8bc', background: '#f7fbf4', color: '#2d4a2d', fontSize: 14, outline: 'none', minWidth: 0 }} />
@@ -1199,6 +1244,14 @@ export default function Home() {
                 {redeeming ? '...' : t.redeemBtn}
               </button>
             </div>
+          </div>
+          <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '16px', marginTop: 14 }}>
+            <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 4 }}>{t.shareProfileCard}</div>
+            <div style={{ ...textMuted, fontSize: 10, marginBottom: 10 }}>{t.shareProfileDesc}</div>
+            <button onClick={handleShareProfile} disabled={!username}
+              style={{ width: '100%', padding: '11px 0', borderRadius: 12, background: username ? '#3a7d44' : '#c8e8bc', color: '#fff', fontWeight: 500, fontSize: 13, border: 'none', cursor: username ? 'pointer' : 'default' }}>
+              {username ? t.shareProfileBtn : t.setNameFirst}
+            </button>
           </div>
           <div style={{ ...W, border: borderGreen, borderRadius: 16, padding: '16px', marginTop: 14 }}>
             <div style={{ ...textGreen, fontSize: 12, fontWeight: 500, marginBottom: 4 }}>{t.avatarCard}</div>
